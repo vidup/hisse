@@ -1,0 +1,3 @@
+{"type":"project.created","timestamp":1774028403756,"projectId":"demo","name":"Projet démo","initialStage":"backlog"}
+{"type":"stage.changed","timestamp":1774028425612,"projectId":"demo","fromStage":"backlog","toStage":"brainstorming","reason":"L'utilisateur veut brainstormer sur le projet"}
+{"type":"stage.changed","timestamp":1774028643079,"projectId":"demo","fromStage":"brainstorming","toStage":"shaping","reason":"Demande utilisateur de passer directement au shaping"}
