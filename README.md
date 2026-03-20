@@ -20,6 +20,49 @@ Objectif: sortir l’orchestration critique du LLM et la rendre **déterministe*
 
 - `docs/pi-for-hisse.md` — synthèse des parties de Pi utiles à Hisse / CC-SHIP (extensions, SDK, TUI, sessions, RPC, packages, skills, etc.)
 
+## Lancement rapide
+
+### Installer les dépendances
+
+À la racine :
+
+```bash
+npm install
+```
+
+Puis pour les apps :
+
+```bash
+npm --prefix apps/api install
+npm --prefix apps/web install
+```
+
+### Build
+
+Build racine :
+
+```bash
+npm run build
+```
+
+Build du package runtime :
+
+```bash
+npm run build:runtime
+```
+
+Build de l’API :
+
+```bash
+npm run build:api
+```
+
+Build du front web :
+
+```bash
+npm run build:web
+```
+
 ## Première verticale web
 
 Deux nouvelles apps minimales ont été ajoutées :
@@ -51,6 +94,18 @@ npm run dev:web
 App web par défaut : `http://localhost:5173`
 
 Le front parle à l’API via le proxy Vite (`/api -> http://localhost:3000`).
+
+## Package runtime
+
+Le package npm local du runtime est dans :
+
+- `packages/runtime`
+
+Build direct :
+
+```bash
+npm --prefix packages/runtime run build
+```
 
 ## Lancer l’extension (2 commandes)
 
