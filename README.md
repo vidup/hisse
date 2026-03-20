@@ -20,6 +20,38 @@ Objectif: sortir l’orchestration critique du LLM et la rendre **déterministe*
 
 - `docs/pi-for-hisse.md` — synthèse des parties de Pi utiles à Hisse / CC-SHIP (extensions, SDK, TUI, sessions, RPC, packages, skills, etc.)
 
+## Première verticale web
+
+Deux nouvelles apps minimales ont été ajoutées :
+
+- `apps/api` — petite API Fastify
+- `apps/web` — petite app Vite
+
+### Installer les dépendances
+
+```bash
+npm --prefix apps/api install
+npm --prefix apps/web install
+```
+
+### Lancer l’API
+
+```bash
+npm run dev:api
+```
+
+API par défaut : `http://localhost:3000`
+
+### Lancer le front web
+
+```bash
+npm run dev:web
+```
+
+App web par défaut : `http://localhost:5173`
+
+Le front parle à l’API via le proxy Vite (`/api -> http://localhost:3000`).
+
 ## Lancer l’extension (2 commandes)
 
 ### 1) Directement depuis le source

@@ -9,6 +9,10 @@
   ],
   "scripts": {
     "build": "tsc",
+    "build:api": "npm --prefix apps/api run build",
+    "build:web": "npm --prefix apps/web run build",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run build"
