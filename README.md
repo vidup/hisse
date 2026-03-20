@@ -16,6 +16,10 @@ Objectif: sortir l’orchestration critique du LLM et la rendre **déterministe*
   - `hisse_stage` (advance/status)
   - `/hisse` (statut rapide)
 
+## Documentation locale
+
+- `docs/pi-for-hisse.md` — synthèse des parties de Pi utiles à Hisse / CC-SHIP (extensions, SDK, TUI, sessions, RPC, packages, skills, etc.)
+
 ## Lancer l’extension (2 commandes)
 
 ### 1) Directement depuis le source
