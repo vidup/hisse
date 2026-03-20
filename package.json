@@ -7,8 +7,13 @@
   "files": [
     "dist"
   ],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "tsc",
+    "build:runtime": "npm --prefix packages/runtime run build",
     "build:api": "npm --prefix apps/api run build",
     "build:web": "npm --prefix apps/web run build",
     "dev:api": "npm --prefix apps/api run dev",
