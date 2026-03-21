@@ -48,20 +48,40 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 | `ProjectAssignedToFolder` | Le projet est lié à un dossier du filesystem (choisi par l'utilisateur) |
 | `WorkflowAssignedToProject` | Un workflow est assigné au projet — déclenche la création des tasks |
 
-### Workflow Design
+### Step Catalog
+
+| Event | Description |
+|---|---|
+| `StepCreated` | Une step est créée dans le catalogue (nom, description, deliverable type, human approval, agent, connectors) |
+| `StepConfigured` | La config d'une step catalogue est modifiée — propage à tous les workflows qui la référencent |
+| `StepForked` | Une nouvelle step est créée à partir d'une existante (variante) |
+| `AgentAssignedToStep` | Un agent est assigné à une step du catalogue — propage à tous les workflows |
+| `AgentRemovedFromStep` | Un agent est retiré d'une step du catalogue |
+| `ConnectorAddedToStep` | Un connecteur est ajouté à une step du catalogue (ex: Slack, Miro) |
+| `ConnectorConfigured` | Le connecteur est configuré (cible: channel, board, etc.) |
+| `ConnectorRemovedFromStep` | Un connecteur est retiré d'une step du catalogue |
+
+> **Modèle catalogue avec fork :** Les steps sont des entités first-class dans un catalogue,
+> référencées par les workflows (lien vivant). Modifier une step propage à tous les workflows
+> qui l'utilisent. Si on veut une variante sans impacter les autres → fork (créer une nouvelle
+> step à partir de l'existante). Pas d'override, pas de merge : modifier partout ou forker.
+> Quand on modifie une step depuis un workflow, le système prévient : "Cette step est utilisée
+> dans N workflows. Modifier partout, ou créer une variante ?"
+
+> **Distinction connectors vs tools :** Les connectors sont des automatisations **platform-level**
+> déclenchées à la complétion d'une step (partie de la config step catalogue). Les intégrations
+> **agent-level** (un agent qui appelle Slack pendant son travail) sont des **tools** dans le
+> catalogue de l'agent.
+
+### Workflow Composition
 
 | Event | Description |
 |---|---|
 | `WorkflowCreated` | Un nouveau workflow est créé (nom, description) |
 | `WorkflowUpdated` | Métadonnées du workflow modifiées |
-| `StepAddedToWorkflow` | Une step est ajoutée au workflow |
-| `StepConfigured` | La step est configurée (type de deliverable, human approval requise, etc.) |
-| `StepReorderedInWorkflow` | L'ordre de la step change dans la séquence |
-| `StepRemovedFromWorkflow` | Une step est retirée du workflow |
-
-> **Note :** Le tracking atomique des steps (add/configure/reorder/remove) offre un
-> undo/redo naturel via event sourcing. Alternative : traiter les steps comme état interne
-> du workflow et ne persister que `WorkflowUpdated`. Décision à prendre.
+| `StepAssignedToWorkflow` | Une step du catalogue est assignée au workflow (avec position) |
+| `StepReorderedInWorkflow` | L'ordre d'une step change dans la séquence du workflow |
+| `StepUnassignedFromWorkflow` | Une step est retirée du workflow |
 
 ### Agent Registry & Catalogs
 
@@ -77,20 +97,6 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 | `ToolRemovedFromAgent` | Un tool est retiré de l'agent |
 | `SkillAddedToAgent` | Un skill du catalogue est assigné à l'agent |
 | `SkillRemovedFromAgent` | Un skill est retiré de l'agent |
-| `AgentAssignedToStep` | Un agent est assigné à une step du workflow |
-| `AgentRemovedFromStep` | Un agent est retiré d'une step |
-
-### Step Connectors (intégrations au niveau step)
-
-| Event | Description |
-|---|---|
-| `ConnectorAddedToStep` | Un connecteur est ajouté à une step (ex: Slack, Miro) |
-| `ConnectorConfigured` | Le connecteur est configuré (cible: channel, board, etc.) |
-| `ConnectorRemovedFromStep` | Un connecteur est retiré d'une step |
-
-> **Distinction importante :** Les connectors sont des automatisations **platform-level**
-> déclenchées à la complétion d'une step. Les intégrations **agent-level** (un agent qui
-> appelle Slack pendant son travail) sont des **tools** dans le catalogue de l'agent.
 
 ### Task Execution (Runtime)
 
@@ -143,16 +149,28 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 | `AssignProjectToFolder` | User (choisit un path filesystem) |
 | `AssignWorkflowToProject` | User |
 
-### Workflow Design
+### Step Catalog
+
+| Command | Triggered by |
+|---|---|
+| `CreateStep` | User |
+| `ConfigureStep` | User (propage à tous les workflows — le système prévient) |
+| `ForkStep` | User (depuis un workflow, choisit "créer une variante") |
+| `AssignAgentToStep` | User |
+| `RemoveAgentFromStep` | User |
+| `AddConnectorToStep` | User |
+| `ConfigureConnector` | User |
+| `RemoveConnectorFromStep` | User |
+
+### Workflow Composition
 
 | Command | Triggered by |
 |---|---|
 | `CreateWorkflow` | User |
 | `UpdateWorkflow` | User |
-| `AddStepToWorkflow` | User |
-| `ConfigureStep` | User |
-| `ReorderStep` | User |
-| `RemoveStep` | User |
+| `AssignStepToWorkflow` | User (choisit une step du catalogue + position) |
+| `ReorderStepInWorkflow` | User |
+| `UnassignStepFromWorkflow` | User |
 
 ### Agent Registry & Catalogs
 
@@ -168,16 +186,6 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 | `RemoveToolFromAgent` | User |
 | `AddSkillToAgent` | User |
 | `RemoveSkillFromAgent` | User |
-| `AssignAgentToStep` | User |
-| `RemoveAgentFromStep` | User |
-
-### Connectors
-
-| Command | Triggered by |
-|---|---|
-| `AddConnectorToStep` | User |
-| `ConfigureConnector` | User |
-| `RemoveConnectorFromStep` | User |
 
 ### Task Execution
 
@@ -246,12 +254,14 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 - Détail d'un workflow (steps, agents assignés, config)
 - Dossiers disponibles dans le workspace
 
-### Pour la configuration d'un workflow
+### Pour la composition d'un workflow
 
+- Catalogue des steps disponibles (avec leur config : agent, deliverable type, connectors)
 - Catalogue des agents disponibles
 - Catalogue des tools
 - Catalogue des skills
 - Types de connectors disponibles
+- Nombre de workflows utilisant chaque step (pour informer avant modification/fork)
 
 ### Pour le suivi d'exécution
 
@@ -277,16 +287,20 @@ Project
 Workflow
 ├── name: string
 ├── description: string
-└── steps: Step[] (ordered)
+└── stepRefs: StepRef[] (ordered references to catalog steps)
 
-Step
-├── position: number
+StepRef (value object in Workflow)
+├── stepId: reference (to Step catalog)
+└── position: number
+
+Step (catalog)
 ├── name: string
 ├── description: string
 ├── deliverableType: string (plugin)
 ├── humanApprovalRequired: boolean
 ├── agentId: reference
-└── connectors: Connector[]
+├── connectors: Connector[]
+└── forkedFromId: reference? (si variante, pointe vers la step d'origine)
 
 Agent
 ├── name: string
@@ -335,10 +349,10 @@ Connector
 │  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
 │  │  WORKSPACE    │  │  WORKFLOW DESIGN  │  │   AGENT REGISTRY     │  │
 │  │              │  │                  │  │                      │  │
-│  │  Workspace   │  │  Workflow        │  │  Agent               │  │
-│  │  Project     │  │  Step            │  │  Tool (catalog)      │  │
-│  │  Folder mgmt │  │  Ordering        │  │  Skill (catalog)     │  │
-│  │              │  │  Connectors      │  │  Composition         │  │
+│  │  Workspace   │  │  Step (catalog)  │  │  Agent               │  │
+│  │  Project     │  │  Step fork       │  │  Tool (catalog)      │  │
+│  │  Folder mgmt │  │  Workflow        │  │  Skill (catalog)     │  │
+│  │              │  │  StepRef + order │  │  Composition         │  │
 │  └──────┬───────┘  └────────┬─────────┘  └──────────┬───────────┘  │
 │         │                   │                        │              │
 │         │    assigns        │    defines             │  provides    │
@@ -369,7 +383,7 @@ Connector
 | Bounded Context | Responsabilité | Aggregates |
 |---|---|---|
 | **Workspace** | Gestion du workspace, projets, assignation de dossiers filesystem | Workspace, Project |
-| **Workflow Design** | Création et configuration de workflows et steps | Workflow, Step, Connector |
+| **Workflow Design** | Step Catalog (création, config, fork) + Workflow Composition (assignation, ordonnancement) | Step, Connector, Workflow, StepRef |
 | **Agent Registry** | Configuration des agents, catalogues de tools et skills | Agent, Tool, Skill |
 | **Execution Engine** | Runtime : orchestration des tasks, spawning d'agents, progression entre steps | Task, Deliverable |
 | **Review Gate** *(sous-domaine d'Execution)* | Validation humaine, approbation, rejet, feedback | ReviewEntry |
@@ -507,6 +521,7 @@ USER                          SYSTEM                              HUMAN/AGENT
 | 8 | **Rejet = décision humaine** | Après un `DeliverableRejected`, c'est l'humain (ou l'agent-utilisateur) qui choisit l'action : restart, revision avec feedback, retour à une step précédente. Pas d'automatisme. |
 | 9 | **Linear workflow only (v1)** | Séquentiel pour démarrer. Les branches conditionnelles et le parallélisme sont hors scope initial. |
 | 10 | **Pas de swarm (v1)** | Un seul agent par step. L'orchestration multi-agents est un problème distinct, reporté. |
+| 11 | **Step Catalog avec fork** | Les steps sont des entités first-class dans un catalogue, référencées par les workflows (lien vivant). Modifier une step propage à tous les workflows. Pour personnaliser sans impacter les autres → fork. Pas d'override, pas de merge. |
 
 ---
 
@@ -521,12 +536,12 @@ USER                          SYSTEM                              HUMAN/AGENT
 | Deliverable polymorphe ? | Plugin system avec port générique. |
 | Workflow linéaire ? | Oui, linéaire pour v1. |
 | Intégrations agentic vs automated ? | Les deux : tools (agent) + connectors (platform). |
+| Step Catalog model ? | Les steps sont un catalogue avec lien vivant vers les workflows. Modifier propage partout. Pour personnaliser → fork (créer une variante). Pas d'override. |
 
 ### Ouverts
 
 | # | Hot Spot | Notes |
 |---|---|---|
-| 1 | **Tracking atomique des steps** | Faut-il persister chaque modification de step (add/remove/reorder) comme des events séparés pour avoir un undo/redo ? Ou traiter les steps comme état interne du workflow ? L'event sourcing des steps apporte de la valeur mais ajoute de la complexité. |
 | 2 | **Agent Memory** | L'agent pourrait accumuler de la mémoire entre projets (préférences utilisateur, post-mortems). Comment modéliser ça ? Nouveau bounded context ? Extension de l'Agent aggregate ? Reporté à une version future. |
 | 3 | **RevertToStep — mécanique exacte** | Quand l'humain décide de retourner à une step précédente après rejet, que se passe-t-il avec les tasks intermédiaires ? Sont-elles annulées ? Recréées ? Faut-il un état `reverted` ? |
 | 4 | **Modification de workflow en cours d'exécution** | Si un workflow est modifié alors qu'un projet l'utilise, que se passe-t-il ? Versionning des workflows ? Snapshot au moment de l'assignation ? |
