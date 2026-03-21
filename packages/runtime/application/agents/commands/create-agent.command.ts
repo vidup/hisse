@@ -16,8 +16,9 @@ export class CreateAgentCommandHandler {
         private readonly agentRepository: AgentRepository,
     ) { }
 
-    async execute(command: CreateAgentCommand): Promise<void> {
+    async execute(command: CreateAgentCommand): Promise<AgentDefinition> {
         const agent = AgentDefinition.create(command);
         await this.agentRepository.save(agent);
+        return agent;
     }
 }
