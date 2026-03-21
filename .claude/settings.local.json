@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "mcp__claude_ai_Miro__context_get"
+      "mcp__claude_ai_Miro__context_get",
+      "mcp__claude_ai_Miro__doc_update",
+      "mcp__claude_ai_Miro__context_explore"
     ]
   }
 }
