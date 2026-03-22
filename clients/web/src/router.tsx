@@ -8,6 +8,8 @@ import { AgentDetailPage } from "./pages/agents/agent-detail-page";
 import { StepsPage } from "./pages/steps/steps-page";
 import { TeamsPage } from "./pages/teams/teams-page";
 import { TeamDetailPage } from "./pages/teams/team-detail-page";
+import { WorkflowsPage } from "./pages/workflows/workflows-page";
+import { WorkflowDetailPage } from "./pages/workflows/workflow-detail-page";
 
 export const router = createBrowserRouter([
   {
@@ -19,6 +21,8 @@ export const router = createBrowserRouter([
       { path: "agents", element: <AgentsPage /> },
       { path: "agents/:agentId", element: <AgentDetailPage /> },
       { path: "steps", element: <StepsPage /> },
+      { path: "workflows", element: <WorkflowsPage /> },
+      { path: "workflows/:workflowId", element: <WorkflowDetailPage /> },
       { path: "teams", element: <TeamsPage /> },
       { path: "teams/:teamId", element: <TeamDetailPage /> },
     ],

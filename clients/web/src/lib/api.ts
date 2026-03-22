@@ -1,7 +1,34 @@
 import { DEFAULT_WORKSPACE_ID } from "./config";
 
+let workspacePath: string | null = null;
+
+export async function initWorkspace(): Promise<string> {
+  if (workspacePath) return workspacePath;
+
+  if (window.electron) {
+    workspacePath = await window.electron.getWorkspacePath();
+  } else {
+    // Browser fallback: use a default or prompt
+    workspacePath = "C:/Workspace/hisse"; // dev fallback
+  }
+  return workspacePath;
+}
+
+export function setWorkspacePath(path: string) {
+  workspacePath = path;
+}
+
+export function getWorkspacePath(): string | null {
+  return workspacePath;
+}
+
+function workspaceHeaders(): Record<string, string> {
+  if (!workspacePath) return {};
+  return { "X-Workspace-Path": workspacePath };
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+  const res = await fetch(path, { headers: { ...workspaceHeaders() } });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
   return res.json() as Promise<T>;
 }
@@ -9,7 +36,7 @@ async function get<T>(path: string): Promise<T> {
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...workspaceHeaders() },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
@@ -19,7 +46,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 async function put<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...workspaceHeaders() },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
@@ -77,8 +104,28 @@ export interface TeamSummary {
   createdAt: string;
   updatedAt: string;
   folderPath: string;
-  workflow: string[];
-  backlog: string[];
+}
+
+export interface WorkflowSummary {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowDetail extends WorkflowSummary {
+  steps: StepSummary[];
+}
+
+export interface ProjectSummary {
+  id: string;
+  teamId: string;
+  workflowId: string;
+  name: string;
+  path: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FolderBrowseResult {
@@ -134,12 +181,23 @@ export const api = {
   },
   teams: {
     list: () => get<TeamSummary[]>(`/api/workspaces/${w}/teams`),
-    getWorkflow: (id: string) => get<string[]>(`/api/teams/${id}/workflow`),
     create: (body: { name: string; description: string; folderPath: string }) =>
       post<{ ok: boolean }>(`/api/workspaces/${w}/teams`, body),
     browseFolders: (path?: string) =>
       get<FolderBrowseResult>(`/api/folders${path ? `?path=${encodeURIComponent(path)}` : ""}`),
-    updateWorkflow: (id: string, body: { steps: string[] }) =>
-      put<{ ok: boolean }>(`/api/teams/${id}/workflow`, body),
+  },
+  workflows: {
+    list: () => get<WorkflowSummary[]>("/api/workflows"),
+    getById: (id: string) => get<WorkflowDetail>(`/api/workflows/${id}`),
+    create: (body: { name: string; description: string }) =>
+      post<{ ok: boolean }>("/api/workflows", body),
+    update: (id: string, body: { steps: string[] }) =>
+      put<{ ok: boolean }>(`/api/workflows/${id}`, body),
+  },
+  projects: {
+    listByTeam: (teamId: string) =>
+      get<ProjectSummary[]>(`/api/teams/${teamId}/projects`),
+    create: (teamId: string, body: { name: string; path: string; workflowId: string }) =>
+      post<{ ok: boolean }>(`/api/teams/${teamId}/projects`, body),
   },
 };

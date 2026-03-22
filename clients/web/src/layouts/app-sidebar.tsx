@@ -2,6 +2,7 @@ import { NavLink } from "react-router";
 import {
   BookOpenIcon,
   BotIcon,
+  GitBranchIcon,
   ListChecksIcon,
   SparklesIcon,
   UsersIcon,
@@ -29,6 +30,7 @@ const navItems = [
   { to: "/skills", label: "Skills", icon: BookOpenIcon },
   { to: "/agents", label: "Agents", icon: BotIcon },
   { to: "/steps", label: "Steps", icon: ListChecksIcon },
+  { to: "/workflows", label: "Workflows", icon: GitBranchIcon },
   { to: "/teams", label: "Teams", icon: UsersIcon },
 ];
 
