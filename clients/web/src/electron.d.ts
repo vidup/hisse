@@ -1,5 +1,7 @@
 interface ElectronAPI {
-  pickFolder: () => Promise<string | null>;
+  pickFolder: (defaultPath?: string) => Promise<string | null>;
+  getWorkspacePath: () => Promise<string>;
+  changeWorkspace: () => Promise<string | null>;
 }
 
 interface Window {
