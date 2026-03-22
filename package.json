@@ -1,22 +1,20 @@
 {
   "name": "hisse",
   "version": "0.0.1",
-  "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "packages/*",
+    "adapters/*",
+    "clients/*"
   ],
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test"
   },
-  "author": "Victor Dupuy <victor@skillup.co>",
-  "license": "ISC",
   "devDependencies": {
+    "turbo": "^2.5.4",
     "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "@mariozechner/pi-coding-agent": "^0.61.0"
   }
 }
