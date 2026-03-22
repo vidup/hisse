@@ -1,93 +1,29 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router";
-import { ArrowLeftIcon, PlusIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, FolderIcon, PlusIcon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Empty,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
+  EmptyContent,
 } from "@/components/ui/empty";
-import { ListChecksIcon } from "lucide-react";
-import { useTeams, useTeamWorkflow, useUpdateWorkflow } from "@/hooks/use-teams";
-import { useStepsLibrary } from "@/hooks/use-steps";
-import { WorkflowStepItem } from "./workflow-step-item";
+import { useTeams } from "@/hooks/use-teams";
+import { useProjects } from "@/hooks/use-projects";
+import { CreateProjectDialog } from "./create-project-dialog";
 
 export function TeamDetailPage() {
   const { teamId } = useParams<{ teamId: string }>();
   const { data: teams } = useTeams();
-  const { data: workflow, isLoading: isWorkflowLoading } = useTeamWorkflow(teamId!);
-  const { data: stepsLibrary, isLoading: isStepsLoading } = useStepsLibrary();
-  const { mutate: saveWorkflow, isPending: isSaving } = useUpdateWorkflow(teamId!);
-
-  const [workflowSteps, setWorkflowSteps] = useState<string[]>([]);
-  const [initialized, setInitialized] = useState(false);
+  const { data: projects, isLoading } = useProjects(teamId!);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const team = teams?.find((t) => t.id === teamId);
-
-  useEffect(() => {
-    if (workflow && !initialized) {
-      setWorkflowSteps(workflow);
-      setInitialized(true);
-    }
-  }, [workflow, initialized]);
-
-  const stepsMap = useMemo(() => {
-    const map = new Map<string, { name: string; isAgent: boolean }>();
-    stepsLibrary?.forEach((s) => {
-      map.set(s.id, { name: s.name, isAgent: Boolean(s.agentId) });
-    });
-    return map;
-  }, [stepsLibrary]);
-
-  const availableSteps = stepsLibrary ?? [];
-
-  const isDirty = useMemo(() => {
-    if (!workflow) return false;
-    if (workflow.length !== workflowSteps.length) return true;
-    return workflow.some((id, i) => id !== workflowSteps[i]);
-  }, [workflow, workflowSteps]);
-
-  function handleMoveUp(index: number) {
-    if (index === 0) return;
-    setWorkflowSteps((prev) => {
-      const next = [...prev];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      return next;
-    });
-  }
-
-  function handleMoveDown(index: number) {
-    setWorkflowSteps((prev) => {
-      if (index >= prev.length - 1) return prev;
-      const next = [...prev];
-      [next[index], next[index + 1]] = [next[index + 1], next[index]];
-      return next;
-    });
-  }
-
-  function handleRemove(index: number) {
-    setWorkflowSteps((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function handleAddStep(stepId: string) {
-    setWorkflowSteps((prev) => [...prev, stepId]);
-  }
-
-  function handleSave() {
-    saveWorkflow({ steps: workflowSteps });
-  }
-
-  const isLoading = isWorkflowLoading || isStepsLoading;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
@@ -102,73 +38,64 @@ export function TeamDetailPage() {
 
       <div className="grid gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Workflow</h2>
-          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-            <SaveIcon data-icon="inline-start" />
-            {isSaving ? "Saving..." : "Save Workflow"}
+          <h2 className="text-lg font-medium">Projects</h2>
+          <Button onClick={() => setDialogOpen(true)}>
+            <PlusIcon data-icon="inline-start" />
+            New Project
           </Button>
         </div>
 
         {isLoading ? (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 rounded-lg" />
+              <Skeleton key={i} className="h-32 rounded-xl" />
             ))}
           </div>
-        ) : workflowSteps.length > 0 ? (
-          <div className="grid gap-2">
-            {workflowSteps.map((stepId, index) => {
-              const info = stepsMap.get(stepId);
-              return (
-                <WorkflowStepItem
-                  key={`${index}-${stepId}`}
-                  position={index + 1}
-                  stepId={stepId}
-                  stepName={info?.name ?? stepId}
-                  isAgent={info?.isAgent ?? false}
-                  onMoveUp={() => handleMoveUp(index)}
-                  onMoveDown={() => handleMoveDown(index)}
-                  onRemove={() => handleRemove(index)}
-                  isFirst={index === 0}
-                  isLast={index === workflowSteps.length - 1}
-                />
-              );
-            })}
+        ) : projects && projects.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => (
+              <Card key={project.id}>
+                <CardHeader>
+                  <CardTitle>{project.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                    <FolderIcon className="size-3 shrink-0" />
+                    <span className="truncate font-mono">{project.path}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Workflow: {project.workflowId}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
           <Empty className="min-h-[200px] border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <ListChecksIcon />
+                <FolderIcon />
               </EmptyMedia>
-              <EmptyTitle>No steps in workflow</EmptyTitle>
+              <EmptyTitle>No projects yet</EmptyTitle>
               <EmptyDescription>
-                Add steps from the library to build this workflow.
+                Create a project to run a workflow in a specific folder.
               </EmptyDescription>
             </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => setDialogOpen(true)}>
+                <PlusIcon data-icon="inline-start" />
+                Create Project
+              </Button>
+            </EmptyContent>
           </Empty>
         )}
-
-        {!isLoading && availableSteps.length > 0 && (
-          <div className="flex items-end gap-3">
-            <div className="grid flex-1 gap-2">
-              <span className="text-sm font-medium">Add Step</span>
-              <Select onValueChange={handleAddStep}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a step to add" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSteps.map((step) => (
-                    <SelectItem key={step.id} value={step.id}>
-                      {step.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
       </div>
+
+      <CreateProjectDialog
+        teamId={teamId!}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   );
 }

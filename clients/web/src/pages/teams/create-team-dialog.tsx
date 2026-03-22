@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCreateTeam, useBrowseFolders } from "@/hooks/use-teams";
+import { getWorkspacePath } from "@/lib/api";
 
 const isElectron = typeof window !== "undefined" && !!window.electron;
 
@@ -41,7 +42,7 @@ export function CreateTeamDialog({ open, onOpenChange }: CreateTeamDialogProps) 
   }
 
   async function handlePickNative() {
-    const folder = await window.electron!.pickFolder();
+    const folder = await window.electron!.pickFolder(getWorkspacePath() ?? undefined);
     if (folder) setSelectedFolder(folder);
   }
 
