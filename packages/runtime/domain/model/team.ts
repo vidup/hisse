@@ -11,6 +11,7 @@ export class Team {
     public readonly description: string,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
+    public readonly folderPath: string,
     public workflow: Array<StepId> = [],
     public readonly backlog: Array<TaskId> = [],
     private readonly _events: Array<TeamEvent> = [],
@@ -22,7 +23,7 @@ export class Team {
     return [...this.newEvents];
   }
 
-  static create(params: { name: string; description: string }) {
+  static create(params: { name: string; description: string; folderPath: string }) {
     const id = crypto.randomUUID();
     return new Team(
       id,
@@ -30,9 +31,10 @@ export class Team {
       params.description,
       new Date(),
       new Date(),
+      params.folderPath,
       [],
       [],
-      [new TeamCreatedEvent(id, params.name, params.description, new Date())],
+      [new TeamCreatedEvent(id, params.name, params.description, params.folderPath, new Date())],
     );
   }
 }
@@ -42,8 +44,9 @@ export class TeamCreatedEvent {
     public readonly teamId: TeamId,
     public readonly name: string,
     public readonly description: string,
+    public readonly folderPath: string,
     public readonly createdAt: Date,
-  ) {}
+  ) { }
 }
 
 export type TeamEvent = TeamCreatedEvent;

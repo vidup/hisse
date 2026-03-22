@@ -4,6 +4,6 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["index.ts", "domain/**/*.ts", "application/**/*.ts"],
+  "include": ["index.ts", "domain/**/*.ts", "application/**/*.ts", "infrastructure/**/*.ts"],
   "exclude": ["**/*.test.ts", "dist", "node_modules"]
 }
