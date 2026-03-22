@@ -8,7 +8,6 @@ interface TeamMeta {
   id: string;
   name: string;
   description: string;
-  folderPath: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,10 +24,6 @@ export class FsTeamsRepository implements TeamsRepository {
 
   constructor(private readonly basePath: string) {}
 
-  async preload(): Promise<void> {
-    await this.ensureLoaded();
-  }
-
   async save(team: Team): Promise<void> {
     const slug = slugify(team.name);
     const dir = path.join(this.basePath, slug);
@@ -38,14 +33,12 @@ export class FsTeamsRepository implements TeamsRepository {
       id: team.id,
       name: team.name,
       description: team.description,
-      folderPath: team.folderPath,
       createdAt: team.createdAt.toISOString(),
       updatedAt: team.updatedAt.toISOString(),
     };
 
     await writeFile(path.join(dir, "team.json"), JSON.stringify(meta, null, 2) + "\n", "utf-8");
 
-    // Update cache
     if (this.cache) {
       this.cache.set(team.id, team);
     }
@@ -71,7 +64,7 @@ export class FsTeamsRepository implements TeamsRepository {
       const dirents = await readdir(this.basePath, { withFileTypes: true });
       entries = dirents.filter((d) => d.isDirectory()).map((d) => d.name);
     } catch {
-      return; // Directory doesn't exist yet
+      return;
     }
 
     for (const entry of entries) {
@@ -86,7 +79,6 @@ export class FsTeamsRepository implements TeamsRepository {
           meta.description,
           new Date(meta.createdAt),
           new Date(meta.updatedAt),
-          meta.folderPath,
         );
         this.cache.set(team.id, team);
       } catch {

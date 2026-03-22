@@ -12,10 +12,3 @@ export function useCreateTeam() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["teams"] }),
   });
 }
-
-export function useBrowseFolders(path?: string) {
-  return useQuery({
-    queryKey: ["folders", path ?? "home"],
-    queryFn: () => api.teams.browseFolders(path),
-  });
-}

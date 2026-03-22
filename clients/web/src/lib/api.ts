@@ -103,7 +103,6 @@ export interface TeamSummary {
   description: string;
   createdAt: string;
   updatedAt: string;
-  folderPath: string;
 }
 
 export interface WorkflowSummary {
@@ -136,12 +135,6 @@ export interface ToolSummary {
 export interface ToolDetail {
   name: string;
   files: Record<string, string>;
-}
-
-export interface FolderBrowseResult {
-  current: string;
-  parent: string | null;
-  folders: { name: string; path: string }[];
 }
 
 const w = DEFAULT_WORKSPACE_ID;
@@ -191,10 +184,8 @@ export const api = {
   },
   teams: {
     list: () => get<TeamSummary[]>(`/api/workspaces/${w}/teams`),
-    create: (body: { name: string; description: string; folderPath: string }) =>
+    create: (body: { name: string; description: string }) =>
       post<{ ok: boolean }>(`/api/workspaces/${w}/teams`, body),
-    browseFolders: (path?: string) =>
-      get<FolderBrowseResult>(`/api/folders${path ? `?path=${encodeURIComponent(path)}` : ""}`),
   },
   workflows: {
     list: () => get<WorkflowSummary[]>("/api/workflows"),

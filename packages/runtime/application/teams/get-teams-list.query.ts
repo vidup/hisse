@@ -17,7 +17,6 @@ export class GetTeamsListQueryHandler {
         description: team.description,
         createdAt: team.createdAt.toISOString(),
         updatedAt: team.updatedAt.toISOString(),
-        folderPath: team.folderPath,
       };
     });
   }

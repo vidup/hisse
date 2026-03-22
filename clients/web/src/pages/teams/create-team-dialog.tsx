@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ChevronRightIcon, FolderIcon, FolderOpenIcon, FolderUpIcon } from "lucide-react";
 
 import {
   Dialog,
@@ -12,11 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useCreateTeam, useBrowseFolders } from "@/hooks/use-teams";
-import { getWorkspacePath } from "@/lib/api";
-
-const isElectron = typeof window !== "undefined" && !!window.electron;
+import { useCreateTeam } from "@/hooks/use-teams";
 
 interface CreateTeamDialogProps {
   open: boolean;
@@ -26,34 +21,18 @@ interface CreateTeamDialogProps {
 export function CreateTeamDialog({ open, onOpenChange }: CreateTeamDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [browsingPath, setBrowsingPath] = useState<string | undefined>(undefined);
-  const [selectedFolder, setSelectedFolder] = useState("");
 
   const { mutate, isPending } = useCreateTeam();
-  const { data: browseResult, isLoading: isBrowsing } = useBrowseFolders(
-    isElectron ? undefined : browsingPath,
-  );
-
-  function reset() {
-    setName("");
-    setDescription("");
-    setBrowsingPath(undefined);
-    setSelectedFolder("");
-  }
-
-  async function handlePickNative() {
-    const folder = await window.electron!.pickFolder(getWorkspacePath() ?? undefined);
-    if (folder) setSelectedFolder(folder);
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     mutate(
-      { name, description, folderPath: selectedFolder },
+      { name, description },
       {
         onSuccess: () => {
           onOpenChange(false);
-          reset();
+          setName("");
+          setDescription("");
         },
       },
     );
@@ -61,7 +40,7 @@ export function CreateTeamDialog({ open, onOpenChange }: CreateTeamDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New Team</DialogTitle>
           <DialogDescription>Create a team to orchestrate multi-step workflows.</DialogDescription>
@@ -87,101 +66,8 @@ export function CreateTeamDialog({ open, onOpenChange }: CreateTeamDialogProps) 
               required
             />
           </div>
-
-          <div className="grid gap-2">
-            <Label>Folder</Label>
-            {selectedFolder ? (
-              <div className="flex items-center gap-2">
-                <div className="flex-1 truncate rounded-md border border-border bg-muted/30 px-3 py-2 text-sm font-mono">
-                  {selectedFolder}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedFolder("");
-                    setBrowsingPath(undefined);
-                  }}
-                >
-                  Change
-                </Button>
-              </div>
-            ) : isElectron ? (
-              <Button type="button" variant="outline" onClick={handlePickNative}>
-                <FolderOpenIcon data-icon="inline-start" />
-                Choose folder
-              </Button>
-            ) : (
-              <div className="rounded-lg border border-border">
-                {browseResult && (
-                  <div className="border-b border-border px-3 py-2 text-xs font-mono text-muted-foreground truncate">
-                    {browseResult.current}
-                  </div>
-                )}
-                <ScrollArea className="h-48">
-                  <div className="grid gap-0.5 p-1">
-                    {browseResult?.parent && (
-                      <button
-                        type="button"
-                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-                        onClick={() => setBrowsingPath(browseResult.parent!)}
-                      >
-                        <FolderUpIcon className="size-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">..</span>
-                      </button>
-                    )}
-                    {isBrowsing && (
-                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                        Loading...
-                      </div>
-                    )}
-                    {browseResult?.folders.map((folder) => (
-                      <div key={folder.path} className="flex items-center">
-                        <button
-                          type="button"
-                          className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
-                          onClick={() => setSelectedFolder(folder.path)}
-                        >
-                          <FolderIcon className="size-4 text-muted-foreground" />
-                          <span className="truncate">{folder.name}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-md p-1 hover:bg-muted/50"
-                          onClick={() => setBrowsingPath(folder.path)}
-                          title="Browse into"
-                        >
-                          <ChevronRightIcon className="size-4 text-muted-foreground" />
-                        </button>
-                      </div>
-                    ))}
-                    {browseResult && browseResult.folders.length === 0 && (
-                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                        No subfolders
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-                {browseResult && (
-                  <div className="border-t border-border p-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => setSelectedFolder(browseResult.current)}
-                    >
-                      Select current folder
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           <DialogFooter>
-            <Button type="submit" disabled={isPending || !selectedFolder}>
+            <Button type="submit" disabled={isPending}>
               {isPending ? "Creating..." : "Create Team"}
             </Button>
           </DialogFooter>
