@@ -12,6 +12,7 @@ export { FsWorkflowsRepository } from "./infrastructure/fs-workflows.repository.
 export { FsTeamsRepository } from "./infrastructure/fs-teams.repository.js";
 export { FsProjectsRepository } from "./infrastructure/fs-projects.repository.js";
 export { FsTasksRepository } from "./infrastructure/fs-tasks.repository.js";
+export { FsToolsRepository } from "./infrastructure/fs-tools.repository.js";
 
 // Application — Knowledge (Skills)
 export {
@@ -71,3 +72,6 @@ export { AddTaskToProjectCommand, AddTaskToProjectCommandHandler } from "./appli
 export { StartStepCommand, StartStepCommandHandler } from "./application/projects/start-step.command.js";
 export { CompleteStepCommand, CompleteStepCommandHandler } from "./application/projects/complete-step.command.js";
 export { GetProjectsByTeamQuery, GetProjectsByTeamQueryHandler } from "./application/projects/get-projects-by-team.query.js";
+
+// Application — Tools
+export { GetToolsQuery, GetToolsQueryHandler } from "./application/tools/get-tools.query.js";
