@@ -7,6 +7,7 @@ import { registerLibraryRoutes } from "./routes/library.routes.js";
 import { registerTeamsRoutes } from "./routes/teams.routes.js";
 import { registerWorkflowsRoutes } from "./routes/workflows.routes.js";
 import { registerProjectsRoutes } from "./routes/projects.routes.js";
+import { registerToolsRoutes } from "./routes/tools.routes.js";
 
 const app = Fastify({ logger: true });
 
@@ -33,6 +34,7 @@ registerLibraryRoutes(app);
 registerTeamsRoutes(app);
 registerWorkflowsRoutes(app);
 registerProjectsRoutes(app);
+registerToolsRoutes(app);
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const host = process.env.HOST ?? "0.0.0.0";

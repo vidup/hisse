@@ -8,6 +8,7 @@ import {
   FsWorkflowsRepository,
   FsProjectsRepository,
   FsTasksRepository,
+  FsToolsRepository,
   // Skills
   CreateSkillCommandHandler,
   GetSkillsQueryHandler,
@@ -34,6 +35,8 @@ import {
   AddTaskToProjectCommandHandler,
   StartStepCommandHandler,
   CompleteStepCommandHandler,
+  // Tools
+  GetToolsQueryHandler,
 } from "@hisse/runtime";
 
 export function getWorkspaceFromRequest(request: FastifyRequest): string {
@@ -53,6 +56,7 @@ export function resolveWorkspace(workspacePath: string) {
     steps: path.join(base, "steps"),
     workflows: path.join(base, "workflows"),
     teams: path.join(base, "teams"),
+    tools: path.join(base, "tools"),
   };
 }
 
@@ -66,6 +70,7 @@ export async function createHandlers(workspacePath: string) {
   const workflowsRepo = new FsWorkflowsRepository(ws.workflows);
   const projectsRepo = new FsProjectsRepository(ws.teams);
   const tasksRepo = new FsTasksRepository(ws.teams);
+  const toolsRepo = new FsToolsRepository(ws.tools);
 
   await skillsRepo.preload();
 
@@ -97,6 +102,8 @@ export async function createHandlers(workspacePath: string) {
     addTaskToProject: new AddTaskToProjectCommandHandler(projectsRepo, tasksRepo),
     startStep: new StartStepCommandHandler(tasksRepo, stepsRepo),
     completeStep: new CompleteStepCommandHandler(tasksRepo),
+    // Tools
+    getTools: new GetToolsQueryHandler(toolsRepo),
     // Workspace info
     workspacePath,
   };
