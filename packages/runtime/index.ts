@@ -9,6 +9,9 @@ export { JsonlSkillsRepository } from "./infrastructure/jsonl-skills.repository.
 export { JsonlAgentsRepository } from "./infrastructure/jsonl-agents.repository.js";
 export { JsonlStepsRepository } from "./infrastructure/jsonl-steps.repository.js";
 export { JsonlTeamsRepository } from "./infrastructure/jsonl-teams.repository.js";
+export { JsonlWorkflowsRepository } from "./infrastructure/jsonl-workflows.repository.js";
+export { JsonlProjectsRepository } from "./infrastructure/jsonl-projects.repository.js";
+export { JsonlTasksRepository } from "./infrastructure/jsonl-tasks.repository.js";
 
 // Application — Knowledge (Skills)
 export {
@@ -55,11 +58,16 @@ export {
   GetTeamsListQuery,
   GetTeamsListQueryHandler,
 } from "./application/teams/get-teams-list.query.js";
-export {
-  GetTeamWorkflowQuery,
-  GetTeamWorkflowQueryHandler,
-} from "./application/teams/get-team-workflow.query.js";
-export {
-  UpdateTeamWorkflowCommand,
-  UpdateTeamWorkflowCommandHandler,
-} from "./application/teams/update-team-workflow.command.js";
+
+// Application — Workflows
+export { CreateWorkflowCommand, CreateWorkflowCommandHandler } from "./application/workflows/create-workflow.command.js";
+export { UpdateWorkflowCommand, UpdateWorkflowCommandHandler } from "./application/workflows/update-workflow.command.js";
+export { GetWorkflowsListQuery, GetWorkflowsListQueryHandler } from "./application/workflows/get-workflows-list.query.js";
+export { GetWorkflowByIdQuery, GetWorkflowByIdQueryHandler } from "./application/workflows/get-workflow-by-id.query.js";
+
+// Application — Projects
+export { CreateProjectCommand, CreateProjectCommandHandler } from "./application/projects/create-project.command.js";
+export { AddTaskToProjectCommand, AddTaskToProjectCommandHandler } from "./application/projects/add-task-to-project.command.js";
+export { StartStepCommand, StartStepCommandHandler } from "./application/projects/start-step.command.js";
+export { CompleteStepCommand, CompleteStepCommandHandler } from "./application/projects/complete-step.command.js";
+export { GetProjectsByTeamQuery, GetProjectsByTeamQueryHandler } from "./application/projects/get-projects-by-team.query.js";

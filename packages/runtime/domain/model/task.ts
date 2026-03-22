@@ -1,4 +1,5 @@
 import { ProjectId } from "./project";
+import { StepId } from "./steps";
 
 export type TaskId = string;
 
@@ -14,6 +15,7 @@ export class Task {
         public updatedAt: Date,
         public status: TaskStatus,
         public readonly projectId: ProjectId,
+        public stepId: StepId | null = null,
         private readonly _events: Array<TaskEvent> = [], // for creation only
     ) {
         this.newEvents = _events;
@@ -23,13 +25,23 @@ export class Task {
         return [...this.newEvents];
     }
 
-    start() {
+    start(stepId: StepId) {
         if (this.status !== "backlog") {
             throw new Error("Task is not in backlog");
         }
         this.status = "in_progress";
         this.updatedAt = new Date();
+        this.stepId = stepId;
         this.newEvents.push(new TaskStarted(this.id, new Date(), this.projectId));
+        this.newEvents.push(new TaskMovedToStep(this.id, stepId, new Date()));
+    }
+
+    moveToStep(stepId: StepId) {
+        if (this.status !== "in_progress") {
+            throw new Error("Task is not in progress");
+        }
+        this.stepId = stepId;
+        this.newEvents.push(new TaskMovedToStep(this.id, stepId, new Date()));
     }
 
     complete() {
@@ -51,6 +63,7 @@ export class Task {
             new Date(),
             "backlog",
             params.projectId,
+            null,
             [
                 new TaskCreated(
                     id,
@@ -86,6 +99,14 @@ export class TaskStarted {
     ) { }
 }
 
+export class TaskMovedToStep {
+    constructor(
+        public readonly id: TaskId,
+        public readonly stepId: StepId,
+        public readonly movedAt: Date,
+    ) { }
+}
+
 export class TaskCompleted {
     constructor(
         public readonly id: TaskId,
@@ -94,4 +115,4 @@ export class TaskCompleted {
     ) { }
 }
 
-export type TaskEvent = TaskCreated | TaskStarted | TaskCompleted;
+export type TaskEvent = TaskCreated | TaskStarted | TaskMovedToStep | TaskCompleted;
