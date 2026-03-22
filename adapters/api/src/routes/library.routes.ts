@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import type { AddStepToLibraryCommandHandler, GetStepsLibraryQueryHandler } from "@hisse/runtime";
 import { AddStepToLibraryCommand, GetStepsLibraryQuery } from "@hisse/runtime";
+import { getWorkspaceFromRequest, createHandlers } from "../workspace.js";
 
 interface Transport {
   type: string;
@@ -9,13 +9,10 @@ interface Transport {
   authenticated: boolean;
 }
 
-interface LibraryHandlers {
-  getStepsLibrary: GetStepsLibraryQueryHandler;
-  addStepToLibrary: AddStepToLibraryCommandHandler;
-}
-
-export function registerLibraryRoutes(app: FastifyInstance, handlers: LibraryHandlers) {
-  app.get("/api/steps", async () => {
+export function registerLibraryRoutes(app: FastifyInstance) {
+  app.get("/api/steps", async (request) => {
+    const workspacePath = getWorkspaceFromRequest(request);
+    const handlers = await createHandlers(workspacePath);
     return handlers.getStepsLibrary.execute(new GetStepsLibraryQuery("default"));
   });
 
@@ -28,6 +25,8 @@ export function registerLibraryRoutes(app: FastifyInstance, handlers: LibraryHan
         | { kind: "human"; transports: Array<Transport> };
     };
   }>("/api/steps", async (request, reply) => {
+    const workspacePath = getWorkspaceFromRequest(request);
+    const handlers = await createHandlers(workspacePath);
     const { name, description, parameters } = request.body;
     try {
       await handlers.addStepToLibrary.execute(

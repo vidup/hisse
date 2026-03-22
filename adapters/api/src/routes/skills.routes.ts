@@ -1,34 +1,26 @@
 import type { FastifyInstance } from "fastify";
-import type {
-  CreateSkillCommandHandler,
-  GetSkillByIdQueryHandler,
-  GetSkillsQueryHandler,
-  UpdateSkillCommandHandler,
-} from "@hisse/runtime";
 import {
   CreateSkillCommand,
   GetSkillByIdQuery,
   GetSkillsQuery,
   UpdateSkillCommand,
 } from "@hisse/runtime";
+import { getWorkspaceFromRequest, createHandlers } from "../workspace.js";
 
-interface SkillsHandlers {
-  getSkills: GetSkillsQueryHandler;
-  getSkillById: GetSkillByIdQueryHandler;
-  createSkill: CreateSkillCommandHandler;
-  updateSkill: UpdateSkillCommandHandler;
-}
-
-export function registerSkillsRoutes(app: FastifyInstance, handlers: SkillsHandlers) {
+export function registerSkillsRoutes(app: FastifyInstance) {
   app.get<{ Params: { workspaceId: string } }>(
     "/api/workspaces/:workspaceId/skills",
     async (request) => {
+      const workspacePath = getWorkspaceFromRequest(request);
+      const handlers = await createHandlers(workspacePath);
       const { workspaceId } = request.params;
       return handlers.getSkills.execute(new GetSkillsQuery(workspaceId));
     },
   );
 
   app.get<{ Params: { id: string } }>("/api/skills/:id", async (request, reply) => {
+    const workspacePath = getWorkspaceFromRequest(request);
+    const handlers = await createHandlers(workspacePath);
     const { id } = request.params;
     try {
       return await handlers.getSkillById.execute(new GetSkillByIdQuery(id));
@@ -45,6 +37,8 @@ export function registerSkillsRoutes(app: FastifyInstance, handlers: SkillsHandl
     Params: { workspaceId: string };
     Body: { name: string; description: string; content: string };
   }>("/api/workspaces/:workspaceId/skills", async (request, reply) => {
+    const workspacePath = getWorkspaceFromRequest(request);
+    const handlers = await createHandlers(workspacePath);
     const { name, description, content } = request.body;
     try {
       await handlers.createSkill.execute(new CreateSkillCommand(name, description, content));
@@ -58,6 +52,8 @@ export function registerSkillsRoutes(app: FastifyInstance, handlers: SkillsHandl
   app.put<{ Params: { id: string }; Body: { name: string; description: string; content: string } }>(
     "/api/skills/:id",
     async (request, reply) => {
+      const workspacePath = getWorkspaceFromRequest(request);
+      const handlers = await createHandlers(workspacePath);
       const { id } = request.params;
       const { name, description, content } = request.body;
       try {

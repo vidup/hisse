@@ -1,27 +1,21 @@
 import type { FastifyInstance } from "fastify";
-import type {
-  CreateAgentCommandHandler,
-  GetAgentConfigurationQueryHandler,
-  GetAgentsQueryHandler,
-} from "@hisse/runtime";
 import { CreateAgentCommand, GetAgentConfigurationQuery, GetAgentsQuery } from "@hisse/runtime";
+import { getWorkspaceFromRequest, createHandlers } from "../workspace.js";
 
-interface AgentsHandlers {
-  getAgents: GetAgentsQueryHandler;
-  getAgentConfiguration: GetAgentConfigurationQueryHandler;
-  createAgent: CreateAgentCommandHandler;
-}
-
-export function registerAgentsRoutes(app: FastifyInstance, handlers: AgentsHandlers) {
+export function registerAgentsRoutes(app: FastifyInstance) {
   app.get<{ Params: { workspaceId: string } }>(
     "/api/workspaces/:workspaceId/agents",
     async (request) => {
+      const workspacePath = getWorkspaceFromRequest(request);
+      const handlers = await createHandlers(workspacePath);
       const { workspaceId } = request.params;
       return handlers.getAgents.execute(new GetAgentsQuery(workspaceId));
     },
   );
 
   app.get<{ Params: { id: string } }>("/api/agents/:id/configuration", async (request, reply) => {
+    const workspacePath = getWorkspaceFromRequest(request);
+    const handlers = await createHandlers(workspacePath);
     const { id } = request.params;
     try {
       return await handlers.getAgentConfiguration.execute(new GetAgentConfigurationQuery(id));
@@ -46,6 +40,8 @@ export function registerAgentsRoutes(app: FastifyInstance, handlers: AgentsHandl
       skills: string[];
     };
   }>("/api/workspaces/:workspaceId/agents", async (request, reply) => {
+    const workspacePath = getWorkspaceFromRequest(request);
+    const handlers = await createHandlers(workspacePath);
     const { workspaceId } = request.params;
     const { name, description, systemPrompt, provider, model, tools, skills } = request.body;
     try {
