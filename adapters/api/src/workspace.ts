@@ -2,12 +2,12 @@ import path from "node:path";
 import type { FastifyRequest } from "fastify";
 import {
   FsSkillsRepository,
-  JsonlAgentsRepository,
-  JsonlStepsRepository,
-  JsonlTeamsRepository,
-  JsonlWorkflowsRepository,
-  JsonlProjectsRepository,
-  JsonlTasksRepository,
+  FsAgentsRepository,
+  FsStepsRepository,
+  FsTeamsRepository,
+  FsWorkflowsRepository,
+  FsProjectsRepository,
+  FsTasksRepository,
   // Skills
   CreateSkillCommandHandler,
   GetSkillsQueryHandler,
@@ -49,12 +49,10 @@ export function resolveWorkspace(workspacePath: string) {
   return {
     root: workspacePath,
     skills: path.join(base, "skills"),
-    agents: path.join(base, "data", "agents.jsonl"),
-    steps: path.join(base, "data", "steps.jsonl"),
-    workflows: path.join(base, "data", "workflows.jsonl"),
-    teams: path.join(base, "data", "teams.jsonl"),
-    projects: path.join(base, "data", "projects.jsonl"),
-    tasks: path.join(base, "data", "tasks.jsonl"),
+    agents: path.join(base, "agents"),
+    steps: path.join(base, "steps"),
+    workflows: path.join(base, "workflows"),
+    teams: path.join(base, "teams"),
   };
 }
 
@@ -62,12 +60,12 @@ export async function createHandlers(workspacePath: string) {
   const ws = resolveWorkspace(workspacePath);
 
   const skillsRepo = new FsSkillsRepository(ws.skills);
-  const agentsRepo = new JsonlAgentsRepository(ws.agents);
-  const stepsRepo = new JsonlStepsRepository(ws.steps);
-  const teamsRepo = new JsonlTeamsRepository(ws.teams);
-  const workflowsRepo = new JsonlWorkflowsRepository(ws.workflows);
-  const projectsRepo = new JsonlProjectsRepository(ws.projects);
-  const tasksRepo = new JsonlTasksRepository(ws.tasks);
+  const agentsRepo = new FsAgentsRepository(ws.agents);
+  const stepsRepo = new FsStepsRepository(ws.steps);
+  const teamsRepo = new FsTeamsRepository(ws.teams);
+  const workflowsRepo = new FsWorkflowsRepository(ws.workflows);
+  const projectsRepo = new FsProjectsRepository(ws.teams);
+  const tasksRepo = new FsTasksRepository(ws.teams);
 
   await skillsRepo.preload();
 

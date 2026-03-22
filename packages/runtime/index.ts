@@ -6,15 +6,12 @@ export { HealthCheckQuery, HealthCheckQueryHandler } from "./application/health-
 
 // Infrastructure — File-based Repositories
 export { FsSkillsRepository } from "./infrastructure/fs-skills.repository.js";
-
-// Infrastructure — JSONL Repositories (legacy)
-export { JsonlSkillsRepository } from "./infrastructure/jsonl-skills.repository.js";
-export { JsonlAgentsRepository } from "./infrastructure/jsonl-agents.repository.js";
-export { JsonlStepsRepository } from "./infrastructure/jsonl-steps.repository.js";
-export { JsonlTeamsRepository } from "./infrastructure/jsonl-teams.repository.js";
-export { JsonlWorkflowsRepository } from "./infrastructure/jsonl-workflows.repository.js";
-export { JsonlProjectsRepository } from "./infrastructure/jsonl-projects.repository.js";
-export { JsonlTasksRepository } from "./infrastructure/jsonl-tasks.repository.js";
+export { FsAgentsRepository } from "./infrastructure/fs-agents.repository.js";
+export { FsStepsRepository } from "./infrastructure/fs-steps.repository.js";
+export { FsWorkflowsRepository } from "./infrastructure/fs-workflows.repository.js";
+export { FsTeamsRepository } from "./infrastructure/fs-teams.repository.js";
+export { FsProjectsRepository } from "./infrastructure/fs-projects.repository.js";
+export { FsTasksRepository } from "./infrastructure/fs-tasks.repository.js";
 
 // Application — Knowledge (Skills)
 export {
