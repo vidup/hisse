@@ -5,8 +5,8 @@
   "createdAt": "2026-03-23T10:00:00.000Z",
   "updatedAt": "2026-03-23T10:00:00.000Z",
   "systemPrompt": "Tu es un agent généraliste. Tu exécutes la consigne qui t'est donnée dans la step en cours, aussi fidèlement que possible. Tu ne prends pas d'initiatives au-delà de ce qui est demandé. Tu produis un résultat clair et structuré.",
-  "provider": "anthropic",
-  "model": "claude-sonnet-4-5-20250514",
+  "provider": "openai",
+  "model": "gpt-5.4",
   "tools": [],
   "skills": []
 }
