@@ -8,7 +8,6 @@ export class Team {
     public readonly description: string,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
-    public readonly folderPath: string,
     private readonly _events: Array<TeamEvent> = [],
   ) {
     this.newEvents = _events;
@@ -18,17 +17,11 @@ export class Team {
     return [...this.newEvents];
   }
 
-  static create(params: { name: string; description: string; folderPath: string }) {
+  static create(params: { name: string; description: string }) {
     const id = crypto.randomUUID();
-    return new Team(
-      id,
-      params.name,
-      params.description,
-      new Date(),
-      new Date(),
-      params.folderPath,
-      [new TeamCreatedEvent(id, params.name, params.description, params.folderPath, new Date())],
-    );
+    return new Team(id, params.name, params.description, new Date(), new Date(), [
+      new TeamCreatedEvent(id, params.name, params.description, new Date()),
+    ]);
   }
 }
 
@@ -37,7 +30,6 @@ export class TeamCreatedEvent {
     public readonly teamId: TeamId,
     public readonly name: string,
     public readonly description: string,
-    public readonly folderPath: string,
     public readonly createdAt: Date,
   ) {}
 }

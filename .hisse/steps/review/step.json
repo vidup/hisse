@@ -1,0 +1,8 @@
+{
+  "id": "a446fccd-61d2-4924-9686-bca24f9ba932",
+  "kind": "agent",
+  "name": "Review",
+  "description": "Produit une review markdown structurée. Si une review précédente existe, itère dessus (review-2.md, review-3.md, etc.).",
+  "agentId": "9c23cf22-3645-4080-9182-bf2135d0d88a",
+  "createdAt": "2026-03-23T10:00:00.000Z"
+}

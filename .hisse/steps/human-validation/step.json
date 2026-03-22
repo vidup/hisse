@@ -1,0 +1,8 @@
+{
+  "id": "d97297d0-93aa-4284-9426-f01ca66cbe6f",
+  "kind": "human",
+  "name": "Human Validation",
+  "description": "Validation humaine. L'humain review, approuve ou demande des modifications.",
+  "transports": [{ "type": "local", "target": "local", "configuration": {}, "authenticated": false }],
+  "createdAt": "2026-03-23T10:00:00.000Z"
+}

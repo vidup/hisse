@@ -21,13 +21,13 @@ export function registerTeamsRoutes(app: FastifyInstance) {
 
   app.post<{
     Params: { workspaceId: string };
-    Body: { name: string; description: string; folderPath: string };
+    Body: { name: string; description: string };
   }>("/api/workspaces/:workspaceId/teams", async (request, reply) => {
     const workspacePath = getWorkspaceFromRequest(request);
     const handlers = await createHandlers(workspacePath);
-    const { name, description, folderPath } = request.body;
+    const { name, description } = request.body;
     try {
-      await handlers.createTeam.execute(new CreateTeamCommand(name, description, folderPath));
+      await handlers.createTeam.execute(new CreateTeamCommand(name, description));
       return reply.status(201).send({ ok: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";

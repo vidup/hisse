@@ -5,7 +5,6 @@ export class CreateTeamCommand {
   constructor(
     public readonly name: string,
     public readonly description: string,
-    public readonly folderPath: string,
   ) {}
 }
 
@@ -16,7 +15,6 @@ export class CreateTeamCommandHandler {
     const team = Team.create({
       name: command.name,
       description: command.description,
-      folderPath: command.folderPath,
     });
     await this.teamRepository.save(team);
   }
