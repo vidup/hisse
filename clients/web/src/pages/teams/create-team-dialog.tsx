@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRightIcon, FolderIcon, FolderUpIcon } from "lucide-react";
+import { ChevronRightIcon, FolderIcon, FolderOpenIcon, FolderUpIcon } from "lucide-react";
 
 import {
   Dialog,
@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCreateTeam, useBrowseFolders } from "@/hooks/use-teams";
 
+const isElectron = typeof window !== "undefined" && !!window.electron;
+
 interface CreateTeamDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,13 +29,20 @@ export function CreateTeamDialog({ open, onOpenChange }: CreateTeamDialogProps) 
   const [selectedFolder, setSelectedFolder] = useState("");
 
   const { mutate, isPending } = useCreateTeam();
-  const { data: browseResult, isLoading: isBrowsing } = useBrowseFolders(browsingPath);
+  const { data: browseResult, isLoading: isBrowsing } = useBrowseFolders(
+    isElectron ? undefined : browsingPath,
+  );
 
   function reset() {
     setName("");
     setDescription("");
     setBrowsingPath(undefined);
     setSelectedFolder("");
+  }
+
+  async function handlePickNative() {
+    const folder = await window.electron!.pickFolder();
+    if (folder) setSelectedFolder(folder);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -99,6 +108,11 @@ export function CreateTeamDialog({ open, onOpenChange }: CreateTeamDialogProps) 
                   Change
                 </Button>
               </div>
+            ) : isElectron ? (
+              <Button type="button" variant="outline" onClick={handlePickNative}>
+                <FolderOpenIcon data-icon="inline-start" />
+                Choose folder
+              </Button>
             ) : (
               <div className="rounded-lg border border-border">
                 {browseResult && (
