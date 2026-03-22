@@ -1,11 +1,7 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 
-import {
-  HealthCheckQuery,
-  HealthCheckQueryHandler,
-  type HealthPort,
-} from "@hisse/runtime";
+import { HealthCheckQuery, HealthCheckQueryHandler, type HealthPort } from "@hisse/runtime";
 
 const app = Fastify({ logger: true });
 

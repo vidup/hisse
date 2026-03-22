@@ -1,7 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(git ls-tree:*)"
-    ]
+    "allow": ["Bash(git ls-tree:*)"]
   }
 }

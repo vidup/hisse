@@ -2,13 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIcon, WifiIcon, WifiOffIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface HealthResponse {
   status: string;
@@ -67,9 +61,7 @@ export function App() {
               {connected ? "Connected" : "Disconnected"}
             </Badge>
           </div>
-          <CardDescription>
-            Runtime health check via API driving adapter.
-          </CardDescription>
+          <CardDescription>Runtime health check via API driving adapter.</CardDescription>
         </CardHeader>
         <CardContent>
           {health ? (
@@ -77,9 +69,7 @@ export function App() {
               {JSON.stringify(health, null, 2)}
             </pre>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Waiting for API connection...
-            </p>
+            <p className="text-sm text-muted-foreground">Waiting for API connection...</p>
           )}
         </CardContent>
       </Card>
