@@ -50,7 +50,9 @@ export function AppSidebar() {
           </div>
           <div className="grid min-w-0 flex-1 text-left">
             <span className="truncate font-medium">Hisse</span>
-            <span className="truncate text-xs text-sidebar-foreground/70">Workflow orchestration</span>
+            <span className="truncate text-xs text-sidebar-foreground/70">
+              Workflow orchestration
+            </span>
           </div>
         </div>
       </SidebarHeader>

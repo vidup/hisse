@@ -63,9 +63,7 @@ export function CreateTeamDialog({ open, onOpenChange }: CreateTeamDialogProps) 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New Team</DialogTitle>
-          <DialogDescription>
-            Create a team to orchestrate multi-step workflows.
-          </DialogDescription>
+          <DialogDescription>Create a team to orchestrate multi-step workflows.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="grid gap-2">

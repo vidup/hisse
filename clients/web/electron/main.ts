@@ -35,7 +35,7 @@ ipcMain.handle("dialog:openDirectory", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ["openDirectory"],
   });
-  return result.canceled ? null : result.filePaths[0] ?? null;
+  return result.canceled ? null : (result.filePaths[0] ?? null);
 });
 
 app.on("ready", createWindow);

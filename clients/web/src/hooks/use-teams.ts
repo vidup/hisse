@@ -6,7 +6,10 @@ export function useTeams() {
 }
 
 export function useTeamWorkflow(id: string) {
-  return useQuery({ queryKey: ["teams", id, "workflow"], queryFn: () => api.teams.getWorkflow(id) });
+  return useQuery({
+    queryKey: ["teams", id, "workflow"],
+    queryFn: () => api.teams.getWorkflow(id),
+  });
 }
 
 export function useCreateTeam() {

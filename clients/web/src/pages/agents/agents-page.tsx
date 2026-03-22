@@ -46,9 +46,7 @@ export function AgentsPage() {
               <BotIcon />
             </EmptyMedia>
             <EmptyTitle>No agents yet</EmptyTitle>
-            <EmptyDescription>
-              Create your first agent to get started.
-            </EmptyDescription>
+            <EmptyDescription>Create your first agent to get started.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}

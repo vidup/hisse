@@ -30,10 +30,7 @@ interface CreateAgentDialogProps {
 
 const PROVIDERS = ["anthropic", "openai", "google", "ollama", "custom"] as const;
 
-export function CreateAgentDialog({
-  open,
-  onOpenChange,
-}: CreateAgentDialogProps) {
+export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -55,9 +52,7 @@ export function CreateAgentDialog({
 
   function toggleSkill(skillId: string) {
     setSelectedSkillIds((prev) =>
-      prev.includes(skillId)
-        ? prev.filter((id) => id !== skillId)
-        : [...prev, skillId],
+      prev.includes(skillId) ? prev.filter((id) => id !== skillId) : [...prev, skillId],
     );
   }
 
@@ -157,10 +152,7 @@ export function CreateAgentDialog({
               <ScrollArea className="h-32 rounded-lg border border-input p-2">
                 <div className="flex flex-col gap-2">
                   {skills.map((skill) => (
-                    <label
-                      key={skill.id}
-                      className="flex items-center gap-2 text-sm"
-                    >
+                    <label key={skill.id} className="flex items-center gap-2 text-sm">
                       <Checkbox
                         checked={selectedSkillIds.includes(skill.id)}
                         onCheckedChange={() => toggleSkill(skill.id)}

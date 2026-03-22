@@ -1,12 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import type {
-  AddStepToLibraryCommandHandler,
-  GetStepsLibraryQueryHandler,
-} from "@hisse/runtime";
-import {
-  AddStepToLibraryCommand,
-  GetStepsLibraryQuery,
-} from "@hisse/runtime";
+import type { AddStepToLibraryCommandHandler, GetStepsLibraryQueryHandler } from "@hisse/runtime";
+import { AddStepToLibraryCommand, GetStepsLibraryQuery } from "@hisse/runtime";
 
 interface Transport {
   type: string;
@@ -20,14 +14,9 @@ interface LibraryHandlers {
   addStepToLibrary: AddStepToLibraryCommandHandler;
 }
 
-export function registerLibraryRoutes(
-  app: FastifyInstance,
-  handlers: LibraryHandlers,
-) {
+export function registerLibraryRoutes(app: FastifyInstance, handlers: LibraryHandlers) {
   app.get("/api/steps", async () => {
-    return handlers.getStepsLibrary.execute(
-      new GetStepsLibraryQuery("default"),
-    );
+    return handlers.getStepsLibrary.execute(new GetStepsLibraryQuery("default"));
   });
 
   app.post<{
@@ -46,8 +35,7 @@ export function registerLibraryRoutes(
       );
       return reply.status(201).send({ ok: true });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : "Unknown error";
       return reply.status(400).send({ error: message });
     }
   });

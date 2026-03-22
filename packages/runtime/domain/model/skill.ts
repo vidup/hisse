@@ -18,15 +18,9 @@ export class Skill {
 
   static create(params: { name: string; description: string; content: string }) {
     const id = crypto.randomUUID();
-    return new Skill(
-      id,
-      params.name,
-      params.description,
-      new Date(),
-      new Date(),
-      params.content,
-      [new SkillCreatedEvent(id, params.name, params.description, new Date(), params.content)],
-    );
+    return new Skill(id, params.name, params.description, new Date(), new Date(), params.content, [
+      new SkillCreatedEvent(id, params.name, params.description, new Date(), params.content),
+    ]);
   }
 }
 
@@ -39,7 +33,7 @@ export class SkillCreatedEvent {
     public readonly description: string,
     public readonly createdAt: Date,
     public readonly skillContent: string, // basically SKILL.md content
-  ) { }
+  ) {}
 }
 
 export class SkillUpdatedEvent {
@@ -49,7 +43,7 @@ export class SkillUpdatedEvent {
     public readonly description: string,
     public readonly updatedAt: Date,
     public readonly skillContent: string, // basically SKILL.md content
-  ) { }
+  ) {}
 }
 
 export type SkillEvent = SkillCreatedEvent | SkillUpdatedEvent;

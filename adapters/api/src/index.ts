@@ -32,11 +32,7 @@ import {
 } from "@hisse/runtime";
 
 // Health
-import {
-  HealthCheckQuery,
-  HealthCheckQueryHandler,
-  type HealthPort,
-} from "@hisse/runtime";
+import { HealthCheckQuery, HealthCheckQueryHandler, type HealthPort } from "@hisse/runtime";
 
 // Routes
 import { registerSkillsRoutes } from "./routes/skills.routes.js";
@@ -58,12 +54,8 @@ const skillsRepo = new JsonlSkillsRepository(
 const agentsRepo = new JsonlAgentsRepository(
   path.resolve(process.cwd(), ".hisse/data/agents.jsonl"),
 );
-const stepsRepo = new JsonlStepsRepository(
-  path.resolve(process.cwd(), ".hisse/data/steps.jsonl"),
-);
-const teamsRepo = new JsonlTeamsRepository(
-  path.resolve(process.cwd(), ".hisse/data/teams.jsonl"),
-);
+const stepsRepo = new JsonlStepsRepository(path.resolve(process.cwd(), ".hisse/data/steps.jsonl"));
+const teamsRepo = new JsonlTeamsRepository(path.resolve(process.cwd(), ".hisse/data/teams.jsonl"));
 
 // Skills repo has a sync findByIds that needs the cache pre-loaded
 await skillsRepo.preload();

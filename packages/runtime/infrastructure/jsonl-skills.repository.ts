@@ -38,9 +38,7 @@ export class JsonlSkillsRepository implements SkillsRepository {
 
   findByIds(skillIds: SkillId[]): Record<SkillId, Skill | null> {
     if (this.cache === null) {
-      throw new Error(
-        "Cache not loaded. Call preload() before using findByIds.",
-      );
+      throw new Error("Cache not loaded. Call preload() before using findByIds.");
     }
     const result: Record<SkillId, Skill | null> = {};
     for (const id of skillIds) {

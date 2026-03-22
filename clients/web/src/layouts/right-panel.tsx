@@ -18,11 +18,7 @@ export function useRightPanel() {
 export function RightPanelProvider({ children }: { children: ReactNode }) {
   const [content, setContent] = useState<ReactNode | null>(null);
 
-  return (
-    <RightPanelContext value={{ content, setContent }}>
-      {children}
-    </RightPanelContext>
-  );
+  return <RightPanelContext value={{ content, setContent }}>{children}</RightPanelContext>;
 }
 
 export function RightPanel() {

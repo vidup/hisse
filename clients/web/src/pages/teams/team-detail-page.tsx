@@ -97,18 +97,13 @@ export function TeamDetailPage() {
             <ArrowLeftIcon />
           </Link>
         </Button>
-        <h1 className="font-heading text-xl font-semibold">
-          {team?.name ?? teamId}
-        </h1>
+        <h1 className="font-heading text-xl font-semibold">{team?.name ?? teamId}</h1>
       </div>
 
       <div className="grid gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Workflow</h2>
-          <Button
-            onClick={handleSave}
-            disabled={!isDirty || isSaving}
-          >
+          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
             <SaveIcon data-icon="inline-start" />
             {isSaving ? "Saving..." : "Save Workflow"}
           </Button>

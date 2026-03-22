@@ -64,9 +64,7 @@ export function AgentDetailPage() {
           </Button>
         </div>
         <h1 className="font-heading text-xl font-semibold">{agent.name}</h1>
-        {agent.description && (
-          <p className="text-sm text-muted-foreground">{agent.description}</p>
-        )}
+        {agent.description && <p className="text-sm text-muted-foreground">{agent.description}</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

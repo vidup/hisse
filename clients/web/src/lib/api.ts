@@ -62,7 +62,12 @@ export interface StepSummary {
   name: string;
   description: string;
   agentId?: string;
-  transports?: Array<{ type: string; target: string; configuration: Record<string, unknown>; authenticated: boolean }>;
+  transports?: Array<{
+    type: string;
+    target: string;
+    configuration: Record<string, unknown>;
+    authenticated: boolean;
+  }>;
 }
 
 export interface TeamSummary {
@@ -99,13 +104,33 @@ export const api = {
   agents: {
     list: () => get<AgentSummary[]>(`/api/workspaces/${w}/agents`),
     getConfig: (id: string) => get<AgentConfiguration>(`/api/agents/${id}/configuration`),
-    create: (body: { name: string; description: string; systemPrompt: string; provider: string; model: string; tools: string[]; skills: string[] }) =>
-      post<{ ok: boolean }>(`/api/workspaces/${w}/agents`, body),
+    create: (body: {
+      name: string;
+      description: string;
+      systemPrompt: string;
+      provider: string;
+      model: string;
+      tools: string[];
+      skills: string[];
+    }) => post<{ ok: boolean }>(`/api/workspaces/${w}/agents`, body),
   },
   steps: {
     list: () => get<StepSummary[]>("/api/steps"),
-    create: (body: { name: string; description: string; parameters: { kind: "agent"; agentId: string } | { kind: "human"; transports: Array<{ type: string; target: string; configuration: Record<string, unknown>; authenticated: boolean }> } }) =>
-      post<{ ok: boolean }>("/api/steps", body),
+    create: (body: {
+      name: string;
+      description: string;
+      parameters:
+        | { kind: "agent"; agentId: string }
+        | {
+            kind: "human";
+            transports: Array<{
+              type: string;
+              target: string;
+              configuration: Record<string, unknown>;
+              authenticated: boolean;
+            }>;
+          };
+    }) => post<{ ok: boolean }>("/api/steps", body),
   },
   teams: {
     list: () => get<TeamSummary[]>(`/api/workspaces/${w}/teams`),

@@ -21,9 +21,7 @@ import {
 import { useCreateStep } from "@/hooks/use-steps";
 import { useAgents } from "@/hooks/use-agents";
 
-const AVAILABLE_TRANSPORTS = [
-  { type: "local", label: "Local (in-app)" },
-] as const;
+const AVAILABLE_TRANSPORTS = [{ type: "local", label: "Local (in-app)" }] as const;
 
 interface CreateStepDialogProps {
   open: boolean;
@@ -148,10 +146,7 @@ export function CreateStepDialog({ open, onOpenChange }: CreateStepDialogProps) 
               </p>
               <div className="grid gap-2 rounded-lg border border-border p-3">
                 {AVAILABLE_TRANSPORTS.map((transport) => (
-                  <label
-                    key={transport.type}
-                    className="flex items-center gap-2 text-sm"
-                  >
+                  <label key={transport.type} className="flex items-center gap-2 text-sm">
                     <Checkbox
                       checked={selectedTransports.includes(transport.type)}
                       onCheckedChange={() => toggleTransport(transport.type)}
@@ -166,10 +161,7 @@ export function CreateStepDialog({ open, onOpenChange }: CreateStepDialogProps) 
           <DialogFooter>
             <Button
               type="submit"
-              disabled={
-                isPending ||
-                (kind === "human" && selectedTransports.length === 0)
-              }
+              disabled={isPending || (kind === "human" && selectedTransports.length === 0)}
             >
               {isPending ? "Creating..." : "Create Step"}
             </Button>

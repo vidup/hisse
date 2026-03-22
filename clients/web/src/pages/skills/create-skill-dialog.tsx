@@ -18,10 +18,7 @@ interface CreateSkillDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateSkillDialog({
-  open,
-  onOpenChange,
-}: CreateSkillDialogProps) {
+export function CreateSkillDialog({ open, onOpenChange }: CreateSkillDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
@@ -48,9 +45,7 @@ export function CreateSkillDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New Skill</DialogTitle>
-          <DialogDescription>
-            Create a reusable skill for your agents.
-          </DialogDescription>
+          <DialogDescription>Create a reusable skill for your agents.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="grid gap-2">

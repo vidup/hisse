@@ -1,12 +1,6 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import {
-  HumanStep,
-  AgentStep,
-  Step,
-  StepId,
-  Transport,
-} from "../domain/model/steps.js";
+import { HumanStep, AgentStep, Step, StepId, Transport } from "../domain/model/steps.js";
 import type { StepsRepository } from "../domain/ports/steps.repository.js";
 
 interface HumanStepRecord {

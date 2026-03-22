@@ -1,11 +1,5 @@
 import { Link } from "react-router";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import type { SkillSummary } from "@/lib/api";
 
 interface SkillCardProps {
@@ -22,9 +16,7 @@ export function SkillCard({ skill }: SkillCardProps) {
         </CardHeader>
         {skill.content && (
           <CardContent>
-            <p className="line-clamp-2 text-sm text-muted-foreground font-mono">
-              {skill.content}
-            </p>
+            <p className="line-clamp-2 text-sm text-muted-foreground font-mono">{skill.content}</p>
           </CardContent>
         )}
       </Card>

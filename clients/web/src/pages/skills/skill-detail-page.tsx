@@ -28,11 +28,7 @@ export function SkillDetailPage() {
 
   const isDirty = useCallback(() => {
     if (!skill) return false;
-    return (
-      name !== skill.name ||
-      description !== skill.description ||
-      content !== skill.content
-    );
+    return name !== skill.name || description !== skill.description || content !== skill.content;
   }, [skill, name, description, content]);
 
   function handleSave(e: React.FormEvent) {
@@ -80,12 +76,7 @@ export function SkillDetailPage() {
       <form onSubmit={handleSave} className="grid gap-4 max-w-2xl">
         <div className="grid gap-2">
           <Label htmlFor="detail-name">Name</Label>
-          <Input
-            id="detail-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
+          <Input id="detail-name" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="detail-description">Description</Label>

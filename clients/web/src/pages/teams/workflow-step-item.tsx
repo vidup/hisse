@@ -26,28 +26,14 @@ export function WorkflowStepItem({
 }: WorkflowStepItemProps) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2">
-      <span className="text-sm font-medium text-muted-foreground">
-        {position}
-      </span>
+      <span className="text-sm font-medium text-muted-foreground">{position}</span>
       <span className="flex-1 text-sm font-medium">{stepName}</span>
-      <Badge variant={isAgent ? "default" : "secondary"}>
-        {isAgent ? "Agent" : "Human"}
-      </Badge>
+      <Badge variant={isAgent ? "default" : "secondary"}>{isAgent ? "Agent" : "Human"}</Badge>
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onMoveUp}
-          disabled={isFirst}
-        >
+        <Button variant="ghost" size="icon-sm" onClick={onMoveUp} disabled={isFirst}>
           <ChevronUpIcon />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onMoveDown}
-          disabled={isLast}
-        >
+        <Button variant="ghost" size="icon-sm" onClick={onMoveDown} disabled={isLast}>
           <ChevronDownIcon />
         </Button>
         <Button variant="ghost" size="icon-sm" onClick={onRemove}>

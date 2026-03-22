@@ -47,9 +47,7 @@ export function TeamsPage() {
               <UsersIcon />
             </EmptyMedia>
             <EmptyTitle>No teams yet</EmptyTitle>
-            <EmptyDescription>
-              Create your first team to orchestrate workflows.
-            </EmptyDescription>
+            <EmptyDescription>Create your first team to orchestrate workflows.</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button onClick={() => setDialogOpen(true)}>

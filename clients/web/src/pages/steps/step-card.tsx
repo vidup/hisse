@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { StepSummary } from "@/lib/api";
 
@@ -20,17 +14,13 @@ export function StepCard({ step }: StepCardProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {step.name}
-          <Badge variant={isAgent ? "default" : "secondary"}>
-            {isAgent ? "Agent" : "Human"}
-          </Badge>
+          <Badge variant={isAgent ? "default" : "secondary"}>{isAgent ? "Agent" : "Human"}</Badge>
         </CardTitle>
         <CardDescription>{step.description}</CardDescription>
       </CardHeader>
       <CardContent>
         {isAgent && step.agentId && (
-          <p className="text-sm text-muted-foreground">
-            Agent: {step.agentId}
-          </p>
+          <p className="text-sm text-muted-foreground">Agent: {step.agentId}</p>
         )}
         {!isAgent && step.transports && step.transports.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
