@@ -4,7 +4,10 @@ export type { HealthPort } from "./domain/ports/health.port.js";
 // Application — Health
 export { HealthCheckQuery, HealthCheckQueryHandler } from "./application/health-check.query.js";
 
-// Infrastructure — JSONL Repositories
+// Infrastructure — File-based Repositories
+export { FsSkillsRepository } from "./infrastructure/fs-skills.repository.js";
+
+// Infrastructure — JSONL Repositories (legacy)
 export { JsonlSkillsRepository } from "./infrastructure/jsonl-skills.repository.js";
 export { JsonlAgentsRepository } from "./infrastructure/jsonl-agents.repository.js";
 export { JsonlStepsRepository } from "./infrastructure/jsonl-steps.repository.js";

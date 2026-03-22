@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { FastifyRequest } from "fastify";
 import {
-  JsonlSkillsRepository,
+  FsSkillsRepository,
   JsonlAgentsRepository,
   JsonlStepsRepository,
   JsonlTeamsRepository,
@@ -48,7 +48,7 @@ export function resolveWorkspace(workspacePath: string) {
   const base = path.join(workspacePath, ".hisse");
   return {
     root: workspacePath,
-    skills: path.join(base, "data", "skills.jsonl"),
+    skills: path.join(base, "skills"),
     agents: path.join(base, "data", "agents.jsonl"),
     steps: path.join(base, "data", "steps.jsonl"),
     workflows: path.join(base, "data", "workflows.jsonl"),
@@ -61,7 +61,7 @@ export function resolveWorkspace(workspacePath: string) {
 export async function createHandlers(workspacePath: string) {
   const ws = resolveWorkspace(workspacePath);
 
-  const skillsRepo = new JsonlSkillsRepository(ws.skills);
+  const skillsRepo = new FsSkillsRepository(ws.skills);
   const agentsRepo = new JsonlAgentsRepository(ws.agents);
   const stepsRepo = new JsonlStepsRepository(ws.steps);
   const teamsRepo = new JsonlTeamsRepository(ws.teams);
