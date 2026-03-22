@@ -15,7 +15,6 @@ export class GetProjectsByTeamQueryHandler {
       teamId: project.teamId,
       workflowId: project.workflowId,
       name: project.name,
-      path: project.path,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
     }));

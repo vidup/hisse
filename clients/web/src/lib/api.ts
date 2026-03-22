@@ -122,7 +122,6 @@ export interface ProjectSummary {
   teamId: string;
   workflowId: string;
   name: string;
-  path: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -202,7 +201,7 @@ export const api = {
   projects: {
     listByTeam: (teamId: string) =>
       get<ProjectSummary[]>(`/api/teams/${teamId}/projects`),
-    create: (teamId: string, body: { name: string; path: string; workflowId: string }) =>
+    create: (teamId: string, body: { name: string; workflowId: string }) =>
       post<{ ok: boolean }>(`/api/teams/${teamId}/projects`, body),
   },
 };

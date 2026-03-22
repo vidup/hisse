@@ -29,26 +29,20 @@ interface CreateProjectDialogProps {
 
 export function CreateProjectDialog({ teamId, open, onOpenChange }: CreateProjectDialogProps) {
   const [name, setName] = useState("");
-  const [path, setPath] = useState("");
   const [workflowId, setWorkflowId] = useState("");
 
   const { mutate, isPending } = useCreateProject(teamId);
   const { data: workflows } = useWorkflows();
 
-  function reset() {
-    setName("");
-    setPath("");
-    setWorkflowId("");
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     mutate(
-      { name, path, workflowId },
+      { name, workflowId },
       {
         onSuccess: () => {
           onOpenChange(false);
-          reset();
+          setName("");
+          setWorkflowId("");
         },
       },
     );
@@ -59,26 +53,16 @@ export function CreateProjectDialog({ teamId, open, onOpenChange }: CreateProjec
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New Project</DialogTitle>
-          <DialogDescription>Create a project to run a workflow in a folder.</DialogDescription>
+          <DialogDescription>Create a project and associate it with a workflow.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="project-name">Name</Label>
             <Input
               id="project-name"
-              placeholder="e.g. Frontend App"
+              placeholder="e.g. Feature Auth"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="project-path">Path</Label>
-            <Input
-              id="project-path"
-              placeholder="e.g. /home/user/projects/frontend"
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
               required
             />
           </div>

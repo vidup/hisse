@@ -58,11 +58,7 @@ export function TeamDetailPage() {
                 <CardHeader>
                   <CardTitle>{project.name}</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-2">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-                    <FolderIcon className="size-3 shrink-0" />
-                    <span className="truncate font-mono">{project.path}</span>
-                  </div>
+                <CardContent>
                   <div className="text-xs text-muted-foreground">
                     Workflow: {project.workflowId}
                   </div>

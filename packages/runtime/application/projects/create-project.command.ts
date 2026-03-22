@@ -7,7 +7,6 @@ import { WorkflowsRepository } from "../../domain/ports/workflows.repository";
 export class CreateProjectCommand {
   constructor(
     public readonly name: string,
-    public readonly path: string,
     public readonly teamId: TeamId,
     public readonly workflowId: WorkflowId,
   ) {}
@@ -27,7 +26,6 @@ export class CreateProjectCommandHandler {
 
     const project = Project.create({
       name: command.name,
-      path: command.path,
       teamId: command.teamId,
       workflowId: command.workflowId,
     });

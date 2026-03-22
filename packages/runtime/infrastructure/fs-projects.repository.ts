@@ -9,7 +9,6 @@ interface ProjectRecord {
   teamId: string;
   workflowId: string;
   name: string;
-  path: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,7 +39,6 @@ export class FsProjectsRepository implements ProjectsRepository {
       teamId: project.teamId,
       workflowId: project.workflowId,
       name: project.name,
-      path: project.path,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
     };
@@ -155,7 +153,6 @@ export class FsProjectsRepository implements ProjectsRepository {
       record.teamId,
       record.workflowId,
       record.name,
-      record.path,
       new Date(record.createdAt),
       new Date(record.updatedAt),
     );

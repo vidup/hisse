@@ -8,7 +8,7 @@ export function useProjects(teamId: string) {
 export function useCreateProject(teamId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; path: string; workflowId: string }) => api.projects.create(teamId, body),
+    mutationFn: (body: { name: string; workflowId: string }) => api.projects.create(teamId, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects", teamId] }),
   });
 }
