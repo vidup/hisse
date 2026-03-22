@@ -1,7 +1,4 @@
-import { StepId } from "./steps";
-
 export type TeamId = string;
-export type TaskId = string; // TODO: explore more this domain.
 
 export class Team {
   private newEvents: Array<TeamEvent> = [];
@@ -12,8 +9,6 @@ export class Team {
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
     public readonly folderPath: string,
-    public workflow: Array<StepId> = [],
-    public readonly backlog: Array<TaskId> = [],
     private readonly _events: Array<TeamEvent> = [],
   ) {
     this.newEvents = _events;
@@ -32,8 +27,6 @@ export class Team {
       new Date(),
       new Date(),
       params.folderPath,
-      [],
-      [],
       [new TeamCreatedEvent(id, params.name, params.description, params.folderPath, new Date())],
     );
   }
@@ -46,7 +39,7 @@ export class TeamCreatedEvent {
     public readonly description: string,
     public readonly folderPath: string,
     public readonly createdAt: Date,
-  ) { }
+  ) {}
 }
 
 export type TeamEvent = TeamCreatedEvent;

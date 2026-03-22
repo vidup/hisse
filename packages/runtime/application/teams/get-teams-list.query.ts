@@ -9,6 +9,16 @@ export class GetTeamsListQueryHandler {
   constructor(private readonly teamRepository: TeamsRepository) {}
 
   async execute(query: GetTeamsListQuery) {
-    return await this.teamRepository.findAllByWorkspaceId(query.workspaceId);
+    const teams = await this.teamRepository.findAllByWorkspaceId(query.workspaceId);
+    return teams.map((team) => {
+      return {
+        id: team.id,
+        name: team.name,
+        description: team.description,
+        createdAt: team.createdAt.toISOString(),
+        updatedAt: team.updatedAt.toISOString(),
+        folderPath: team.folderPath,
+      };
+    });
   }
 }

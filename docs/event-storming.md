@@ -1,8 +1,8 @@
 # Event Storming — Hisse Platform
 
 > Plateforme d'orchestration de workflows agentiques. Un workspace contient des catalogues
-> partagés (steps, agents, tools, skills) et des teams. Chaque team définit son workflow
-> (séquence de steps) et reçoit des tasks qui traversent ce workflow.
+> partagés (steps, agents, tools, skills, workflows) et des teams. Chaque team a son dossier
+> et ses projets. Chaque projet est associé à un workflow et contient des tasks qui le traversent.
 
 ---
 
@@ -25,19 +25,19 @@
 
 Une plateforme permettant de :
 
-- Créer un **workspace** avec des catalogues partagés (steps, agents, tools, skills)
-- Créer des **teams** avec chacune son workflow (séquence de steps, configuré une fois)
-- Deux types de steps : **AgentStep** (agent IA fait le travail) et **HumanStep** (humain fait le travail)
-- Ajouter des **tasks** dans une team — chaque task traverse le workflow de la team
+- Créer un **workspace** avec des catalogues partagés (steps, agents, tools, skills, workflows)
+- Créer des **workflows** réutilisables (séquences de steps) au niveau catalogue
+- Créer des **teams** avec chacune son dossier et son historique
+- Créer des **projets** dans une team — chaque projet est associé à un workflow
+- Ajouter des **tasks** dans un projet — chaque task traverse le workflow du projet
 - Obtenir des **deliverables** de n'importe quel type (markdown, code, vidéo, flashcards...)
+- **Chatter** avec un agent dans le contexte d'un workspace, d'un projet ou d'une task
 
 La validation humaine n'est pas un flag caché — c'est une **HumanStep explicite** dans le
 workflow. L'humain peut bouger la task vers n'importe quelle step (avancer ou reculer).
 
-"Projet" est réservé pour plus tard — quand on voudra grouper les tasks entre elles (tags, epics).
-
 Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-linéaires
-(branches conditionnelles), agent memory persistante, projets/epics.
+(branches conditionnelles), agent memory persistante.
 
 ---
 
@@ -45,21 +45,30 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 
 ### Workspace & Teams
 
-| Event                    | Description                                                              |
-| ------------------------ | ------------------------------------------------------------------------ |
-| `WorkspaceCreated`       | Le workspace racine est créé — dossier racine + catalogues partagés      |
-| `TeamCreated`            | Une team est créée dans le workspace (nom, sous-dossier)                 |
-| `StepAssignedToTeam`     | Une step du catalogue est ajoutée au workflow de la team (avec position) |
-| `StepReorderedInTeam`    | L'ordre d'une step change dans le workflow de la team                    |
-| `StepUnassignedFromTeam` | Une step est retirée du workflow de la team                              |
+| Event              | Description                                                         |
+| ------------------ | ------------------------------------------------------------------- |
+| `WorkspaceCreated` | Le workspace racine est créé — dossier racine + catalogues partagés |
+| `TeamCreated`      | Une team est créée dans le workspace (nom, dossier dédié)           |
+
+### Workflow Catalog
+
+| Event             | Description                                                                  |
+| ----------------- | ---------------------------------------------------------------------------- |
+| `WorkflowCreated` | Un workflow est créé dans le catalogue (nom, description, séquence de steps) |
+| `WorkflowUpdated` | La séquence de steps d'un workflow est modifiée                              |
+
+> **Workflow = entité first-class dans le catalogue.** Comme les steps, agents et skills,
+> les workflows vivent au niveau workspace. Plusieurs projets (de teams différentes) peuvent
+> utiliser le même workflow. Modifier un workflow impacte les futurs projets qui l'utilisent.
+> Les projets en cours gardent le workflow tel qu'il était au moment de l'association.
 
 ### Step Catalog
 
-| Event            | Description                                                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| `StepCreated`    | Une step est créée dans le catalogue (type: agent ou human, config complète)                      |
-| `StepConfigured` | La config d'une step est modifiée (diff avant/après) — propage à toutes les teams qui l'utilisent |
-| `StepForked`     | Une nouvelle step est créée à partir d'une existante (variante)                                   |
+| Event            | Description                                                                                         |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| `StepCreated`    | Une step est créée dans le catalogue (type: agent ou human, config complète)                        |
+| `StepConfigured` | La config d'une step est modifiée (diff avant/après) — propage à tous les workflows qui l'utilisent |
+| `StepForked`     | Une nouvelle step est créée à partir d'une existante (variante)                                     |
 
 > **Step type = discriminated union extensible.** Chaque type définit : que se passe-t-il
 > au start, pendant l'exécution, et qu'est-ce qui signale la complétion. L'Execution Engine
@@ -68,17 +77,14 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 > Types v1 :
 >
 > - **AgentStep** : config primaire = `agentId` (**qui** fait le travail). Auto-complete quand l'agent a fini.
-> - **HumanStep** : config primaire = `connector` (**comment** parler à l'humain — Slack, email, app...).
+> - **HumanStep** : config primaire = `transports[]` (**comment** parler à l'humain — local, Slack, email...).
 >   L'humain travaille et bouge la task quand il est prêt.
 >
 > Types futurs envisagés : **SwarmStep** (multi-agents), **AutomationStep** (webhook/script), etc.
 
 > **Modèle catalogue avec fork :** Les steps sont des entités first-class dans un catalogue
-> au niveau workspace, référencées par les teams (lien vivant). Modifier propage partout.
+> au niveau workspace, référencées par les workflows (lien vivant). Modifier propage partout.
 > Pour une variante → fork.
-
-> **Events simplifiés :** `StepCreated` porte la config initiale complète. `StepConfigured`
-> porte la diff (avant/après). Pas d'events granulaires.
 
 ### Agent Registry & Catalogs
 
@@ -91,35 +97,40 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 | `AgentCreated`   | Un agent est créé (nom, description, system prompt, modèle) |
 | `AgentUpdated`   | La configuration de l'agent est modifiée (diff avant/après) |
 
+### Project Lifecycle
+
+| Event            | Description                                                                  |
+| ---------------- | ---------------------------------------------------------------------------- |
+| `ProjectCreated` | Un projet est créé dans une team (nom, description, référence à un workflow) |
+| `ProjectStarted` | **Dérivé** : au moins une task du projet est dans une step                   |
+
+> **Projet = conteneur de tasks dans une team.** Un projet est toujours associé à un
+> workflow. Exemples : "Bug Bounty Q1" (workflow: Execute Direct), "Feature Auth"
+> (workflow: Plan → Spec → Execute → Review). Un projet long-court comme "Bug Bounty"
+> peut accumuler des tasks au fil du temps.
+
 ### Task Execution (Runtime)
 
 | Event                  | Description                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------- |
-| `TaskCreated`          | Une task est créée dans une team (dans le backlog, pas encore dans une step)          |
+| `TaskCreated`          | Une task est créée dans un projet (dans le backlog, pas encore dans une step)         |
 | `TaskMovedToStep`      | La task est déplacée vers une step (première step = start, ou n'importe quelle autre) |
 | `AgentSpawned`         | L'agent est lancé pour travailler sur la task (AgentStep uniquement)                  |
 | `AgentProducedOutput`  | L'agent a produit un output intermédiaire (AgentStep uniquement)                      |
-| `HumanNotified`        | L'humain est notifié via le connector de la step (HumanStep uniquement)               |
+| `HumanNotified`        | L'humain est notifié via le transport de la step (HumanStep uniquement)               |
 | `ContentAddedToTask`   | L'humain a ajouté du contenu — fichier, commentaire, deliverable (HumanStep)          |
 | `DeliverableGenerated` | Un deliverable est généré (par l'agent ou l'humain)                                   |
 | `TaskCompleted`        | La task a terminé toutes les steps (ou est marquée comme terminée)                    |
 
-> **Cycle de vie d'une task :** Créée dans le backlog → déplacée vers la step 1 (start) →
-> traverse les steps → quand elle sort de la dernière step → TaskCompleted.
-> L'humain peut la bouger où il veut. L'agent auto-avance à la step suivante.
+> **Cycle de vie d'une task :** Créée dans le backlog du projet → déplacée vers la step 1
+> (start) → traverse les steps du workflow du projet → quand elle sort de la dernière step
+> → TaskCompleted. L'humain peut la bouger où il veut. L'agent auto-avance à la step suivante.
 
 > **`MoveTaskToStep` est générique.** Avancer et reculer sont le même event/command.
 > La task accumule les deliverables au fur et à mesure de sa progression.
 
 > **Delivery = pure infra.** Pas d'events domaine pour la publication/notification.
-> L'infra réagit aux events (TaskMovedToStep, TaskCompleted) selon les connectors de la step.
-
-### Team & Task Lifecycle (derived)
-
-| Event           | Description                                                       |
-| --------------- | ----------------------------------------------------------------- |
-| `TeamStarted`   | **Dérivé** : au moins une task de la team est dans une step       |
-| `TaskCompleted` | La task est terminée (sortie du workflow ou marquée manuellement) |
+> L'infra réagit aux events (TaskMovedToStep, TaskCompleted) selon les transports de la step.
 
 ---
 
@@ -127,21 +138,25 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 
 ### Workspace & Teams
 
-| Command                | Triggered by                                    |
-| ---------------------- | ----------------------------------------------- |
-| `CreateWorkspace`      | User                                            |
-| `CreateTeam`           | User (nom, sous-dossier)                        |
-| `AssignStepToTeam`     | User (choisit une step du catalogue + position) |
-| `ReorderStepInTeam`    | User                                            |
-| `UnassignStepFromTeam` | User                                            |
+| Command           | Triggered by        |
+| ----------------- | ------------------- |
+| `CreateWorkspace` | User                |
+| `CreateTeam`      | User (nom, dossier) |
+
+### Workflow Catalog
+
+| Command          | Triggered by                               |
+| ---------------- | ------------------------------------------ |
+| `CreateWorkflow` | User (nom, description, séquence de steps) |
+| `UpdateWorkflow` | User (modifier la séquence de steps)       |
 
 ### Step Catalog
 
-| Command         | Triggered by                                            |
-| --------------- | ------------------------------------------------------- |
-| `CreateStep`    | User (choisit le type: agent ou human)                  |
-| `ConfigureStep` | User (propage à toutes les teams — le système prévient) |
-| `ForkStep`      | User (créer une variante)                               |
+| Command         | Triggered by                           |
+| --------------- | -------------------------------------- |
+| `CreateStep`    | User (choisit le type: agent ou human) |
+| `ConfigureStep` | User (propage — le système prévient)   |
+| `ForkStep`      | User (créer une variante)              |
 
 ### Agent Registry & Catalogs
 
@@ -154,14 +169,15 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 | `CreateAgent`  | User                                            |
 | `UpdateAgent`  | User (diff avant/après — tools, skills, config) |
 
-### Task Execution
+### Project & Task Execution
 
 | Command            | Triggered by                                                              |
 | ------------------ | ------------------------------------------------------------------------- |
-| `CreateTask`       | User (crée une task dans le backlog de la team)                           |
+| `CreateProject`    | User (nom, description, team, workflow)                                   |
+| `CreateTask`       | User (crée une task dans le backlog du projet)                            |
 | `MoveTaskToStep`   | User (HumanStep) ou Policy (AgentStep → auto next)                        |
 | `SpawnAgent`       | Policy (auto, quand task arrive sur une AgentStep)                        |
-| `NotifyHuman`      | Policy (auto, quand task arrive sur une HumanStep, via step connector)    |
+| `NotifyHuman`      | Policy (auto, quand task arrive sur une HumanStep, via transports)        |
 | `AddContentToTask` | User (ajoute fichier, commentaire, deliverable — HumanStep)               |
 | `CompleteTask`     | Policy (auto, quand task sort de la dernière step) ou User (manuellement) |
 
@@ -174,11 +190,11 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 | Policy               | Event trigger                       | Command                                        | Condition                            |
 | -------------------- | ----------------------------------- | ---------------------------------------------- | ------------------------------------ |
 | Spawn agent          | `TaskMovedToStep`                   | `SpawnAgent`                                   | Step est un **AgentStep**            |
-| Notify human         | `TaskMovedToStep`                   | `NotifyHuman` (via step connector)             | Step est un **HumanStep**            |
+| Notify human         | `TaskMovedToStep`                   | `NotifyHuman` (via transports)                 | Step est un **HumanStep**            |
 | Auto-advance agent   | Agent finished                      | `MoveTaskToStep(next)`                         | Step est un **AgentStep**            |
 | Move on human action | User `MoveTaskToStep`               | — (direct)                                     | Step est un **HumanStep**            |
 | Auto-complete        | `MoveTaskToStep`                    | `CompleteTask`                                 | Pas de step suivante (dernière step) |
-| Infra: delivery      | `TaskMovedToStep` / `TaskCompleted` | _(infra)_ adapters réagissent selon connectors | Connectors configurés                |
+| Infra: delivery      | `TaskMovedToStep` / `TaskCompleted` | _(infra)_ adapters réagissent selon transports | Transports configurés                |
 
 ---
 
@@ -191,28 +207,39 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 - Deliverables accumulés par la task (contexte de travail)
 - Description et objectifs de la step courante
 - Contenu ajouté à la task (fichiers, commentaires)
-- Liste des steps de la team (pour savoir où bouger la task)
+- Liste des steps du workflow du projet (pour savoir où bouger la task)
+
+### Pour la création d'un projet
+
+- Liste des teams disponibles dans le workspace
+- Catalogue des workflows disponibles (avec leur séquence de steps)
 
 ### Pour la création d'une task
 
-- Liste des teams disponibles dans le workspace
-- Workflow de chaque team (steps, types)
+- Liste des projets de la team
+- Workflow associé au projet
 
-### Pour la configuration d'une team
+### Pour la configuration d'un workflow
 
-- Catalogue des steps disponibles (avec leur type, config, agent/connector)
+- Catalogue des steps disponibles (avec leur type, config, agent/transport)
 - Catalogue des agents disponibles
 - Catalogue des tools
 - Catalogue des skills
-- Types de connectors disponibles
-- Nombre de teams utilisant chaque step (pour informer avant modification/fork)
+- Types de transports disponibles
 
 ### Pour le suivi d'exécution
 
-- Tasks de la team avec leur step courante (vue Kanban)
+- Tasks du projet avec leur step courante (vue Kanban)
 - Type de la step courante (agent ou human — pour savoir qui travaille)
 - Deliverables accumulés par task
 - Contenu ajouté par les humains
+
+### Pour le chat avec un agent
+
+- Workspace courant (contexte global)
+- Projet courant (contexte spécifique, workflow en cours)
+- Task courante (optionnel — contexte encore plus précis)
+- Skills et tools de l'agent
 
 ---
 
@@ -221,15 +248,27 @@ Ce qui n'est **pas** dans le scope initial : swarms multi-agents, workflows non-
 ```
 Workspace
 ├── workspacePath: string
-├── catalogs: steps, agents, tools, skills (shared)
+├── catalogs: steps, agents, tools, skills, workflows (shared)
 
 Team
 ├── name: string
-├── folderPath: string (sous-dossier dans le workspace)
-├── stepRefs: StepRef[] (ordered — le workflow de la team)
-└── tasks: Task[]
+├── folderPath: string (dossier dédié dans le workspace)
+├── projects: Project[]
 
-StepRef (value object in Team)
+Project
+├── name: string
+├── description: string
+├── teamId: reference
+├── workflowId: reference (to Workflow catalog)
+├── status: active | archived
+├── tasks: Task[]
+
+Workflow (catalog, workspace-level)
+├── name: string
+├── description: string
+├── stepRefs: StepRef[] (ordered — la séquence de steps)
+
+StepRef (value object in Workflow)
 ├── stepId: reference (to Step catalog)
 └── position: number
 
@@ -239,7 +278,7 @@ AgentStep (catalog, workspace-level)
 ├── description: string
 ├── deliverableType: string (plugin)
 ├── agentId: reference (required — qui fait le travail)
-├── connectors: Connector[] (optionnel — notifications post-completion)
+├── transports: Transport[] (optionnel — notifications post-completion)
 └── forkedFromId: reference?
 
 HumanStep (catalog, workspace-level)
@@ -247,7 +286,7 @@ HumanStep (catalog, workspace-level)
 ├── name: string
 ├── description: string
 ├── deliverableType: string? (optional)
-├── connectors: Transport[] (au moins in-app par défaut, + transports additionnels)
+├── transports: Transport[] (au moins local par défaut)
 └── forkedFromId: reference?
 
 Agent (catalog, workspace-level)
@@ -266,10 +305,10 @@ Tool (catalog, workspace-level)
 Skill (catalog, workspace-level)
 ├── name: string
 ├── description: string
-└── configuration: object
+└── content: string (SKILL.md — terme: filesystem à terme)
 
-Task (runtime, team-level)
-├── teamId: reference
+Task (runtime, project-level)
+├── projectId: reference
 ├── currentStepId: reference? (null = backlog)
 ├── status: backlog | in_progress | completed
 ├── deliverables: Deliverable[] (accumulés au fil des steps)
@@ -282,7 +321,7 @@ Deliverable
 └── metadata: object
 
 Transport (catalog, workspace-level)
-├── type: string (slack, miro, email, app...)
+├── type: string (local, slack, miro, email...)
 ├── target: string (channel, board, address...)
 ├── configuration: object
 └── authenticated: boolean
@@ -296,67 +335,93 @@ ContentEntry
 
 > **Symétrie step types :**
 >
-> - AgentStep : `agentId` (required) = **qui** fait le travail. Connectors optionnels.
-> - HumanStep : `connectors[]` = **comment** parler à l'humain. In-app par défaut + transports additionnels.
->
+> - AgentStep : `agentId` (required) = **qui** fait le travail. Transports optionnels.
+> - HumanStep : `transports[]` = **comment** parler à l'humain. Local par défaut + transports additionnels.
+
 > **Transports = catalogue workspace-level.** Les transports (Slack, email, Miro...) sont
-> authentifiés une fois au niveau workspace, puis assignés aux HumanSteps. Le transport "app"
+> authentifiés une fois au niveau workspace, puis assignés aux steps. Le transport "local"
 > (in-app) est toujours présent par défaut.
 
-> **Catalogues = workspace-level.** Tous les catalogues (steps, agents, tools, skills) sont
-> partagés entre toutes les teams du workspace. Une équipe plateforme peut créer des steps
-> et tools que les autres teams utilisent.
+> **Catalogues = workspace-level.** Tous les catalogues (steps, agents, tools, skills, workflows)
+> sont partagés entre toutes les teams du workspace. Une équipe plateforme peut créer des
+> ressources utilisées par toutes les teams.
+
+> **Workspace = un dossier qu'on ouvre, pas un objet qu'on crée.** Le workspace est un
+> dossier sur le filesystem. Quand on lance l'app, on pointe vers ce dossier. Tout ce
+> qu'il contient (skills, tools, agents, teams, projets) est découvert par convention
+> de structure de dossier, pas stocké dans une base externe. Le workspace c'est le
+> filesystem lui-même. L'app peut garder une référence locale au workspace courant,
+> mais le workspace n'est pas un aggregate persisté — c'est un point d'entrée.
+>
+> **Cible : tout est file-based.** Skills = dossiers (SKILL.md + rules + assets).
+> Tools = dossiers. Teams = sous-dossiers. Projets = sous-dossiers dans les teams.
+> La persistence JSONL actuelle est transitoire — à terme, la structure de dossier
+> EST la source de vérité, et l'app ne fait que la scanner et la manipuler.
+
+> **Workflow ≠ Team.** Un workflow est un pattern de travail réutilisable. Une team est un
+> contexte organisationnel avec un dossier. Un projet fait le lien entre les deux : il
+> appartient à une team et utilise un workflow.
 
 ---
 
 ## Bounded Contexts
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          HISSE PLATFORM                             │
-│                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    WORKSPACE                                  │   │
-│  │                                                              │   │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │   │
-│  │  │ Step Catalog  │  │ Agent        │  │ Tool & Skill     │   │   │
-│  │  │ (Agent/Human) │  │ Registry     │  │ Catalogs         │   │   │
-│  │  │ + fork        │  │              │  │                  │   │   │
-│  │  └──────────────┘  └──────────────┘  └──────────────────┘   │   │
-│  └──────────────────────────┬───────────────────────────────────┘   │
-│                             │ provides catalogs                     │
-│                             ▼                                       │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                    TEAM & EXECUTION                           │   │
-│  │                                                              │   │
-│  │  Team (workflow = step sequence)                              │   │
-│  │  Task lifecycle ─── Agent spawning ─── MoveTaskToStep        │   │
-│  │                     Human notification                       │   │
-│  │                                                              │   │
-│  │  Infra: Delivery (ports & adapters)                          │   │
-│  │  → réagit aux events selon les connectors                    │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                          HISSE PLATFORM                               │
+│                                                                       │
+│  ┌────────────────────────────────────────────────────────────────┐   │
+│  │                    WORKSPACE (Catalogues)                       │   │
+│  │                                                                │   │
+│  │  ┌──────────────┐  ┌──────────┐  ┌──────────────────┐         │   │
+│  │  │ Step Catalog  │  │ Agent    │  │ Tool & Skill     │         │   │
+│  │  │ (Agent/Human) │  │ Registry │  │ Catalogs         │         │   │
+│  │  └──────────────┘  └──────────┘  └──────────────────┘         │   │
+│  │                                                                │   │
+│  │  ┌──────────────────┐                                          │   │
+│  │  │ Workflow Catalog  │ ← NEW: séquences de steps réutilisables │   │
+│  │  └──────────────────┘                                          │   │
+│  └──────────────────────────┬─────────────────────────────────────┘   │
+│                             │ provides catalogs                       │
+│                             ▼                                         │
+│  ┌────────────────────────────────────────────────────────────────┐   │
+│  │                    TEAM & PROJECT & EXECUTION                   │   │
+│  │                                                                │   │
+│  │  Team (folder, historique)                                      │   │
+│  │  └── Project (workflow ref, tasks)                              │   │
+│  │       └── Task lifecycle ── Agent spawning ── MoveTaskToStep    │   │
+│  │                             Human notification                  │   │
+│  │                                                                │   │
+│  │  Infra: Delivery (ports & adapters)                             │   │
+│  │  → réagit aux events selon les transports                       │   │
+│  └────────────────────────────────────────────────────────────────┘   │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Responsabilités par contexte
 
-| Bounded Context             | Responsabilité                                                                | Aggregates                                                     |
-| --------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Workspace**               | Workspace, catalogues partagés (steps, agents, tools, skills)                 | Workspace, AgentStep, HumanStep, Agent, Tool, Skill, Connector |
-| **Team & Execution**        | Teams, workflows (step sequences), tasks, runtime                             | Team, StepRef, Task, Deliverable, ContentEntry                 |
-| **Delivery** _(pure infra)_ | Réagit aux events — publie deliverables, dispatche notifications via adapters | — (pas de domain model)                                        |
+| Bounded Context             | Responsabilité                                                                | Aggregates                                                               |
+| --------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| **Workspace**               | Workspace, catalogues partagés (steps, agents, tools, skills, workflows)      | Workspace, AgentStep, HumanStep, Agent, Tool, Skill, Workflow, Transport |
+| **Team & Project**          | Teams, projets, tasks, exécution runtime                                      | Team, Project, Task, Deliverable, ContentEntry                           |
+| **Delivery** _(pure infra)_ | Réagit aux events — publie deliverables, dispatche notifications via adapters | — (pas de domain model)                                                  |
 
 ---
 
 ## Core Flow — Process Modeling
 
-> Flux principal : de la création d'une task à sa complétion.
+> Flux principal : de la création d'un projet à la complétion d'une task.
 
 ```
 USER                          SYSTEM                              HUMAN/AGENT
  │                              │                                      │
- │  CreateTask (dans team)      │                                      │
+ │  CreateProject               │                                      │
+ │  (team, workflow)            │                                      │
+ │─────────────────────────────>│                                      │
+ │                              │                                      │
+ │                    ProjectCreated                                    │
+ │                              │                                      │
+ │  CreateTask (dans projet)    │                                      │
  │─────────────────────────────>│                                      │
  │                              │                                      │
  │                    TaskCreated (backlog)                             │
@@ -371,7 +436,7 @@ USER                          SYSTEM                              HUMAN/AGENT
  │        [AgentStep]                     [HumanStep]                  │
  │              │                               │                      │
  │        SpawnAgent                      NotifyHuman                  │
- │              │                         (via connector)              │
+ │              │                         (via transport)              │
  │        AgentSpawned ──────>│                 │                      │
  │              │    [Agent works]        HumanNotified                │
  │              │             │                 │                      │
@@ -394,7 +459,7 @@ USER                          SYSTEM                              HUMAN/AGENT
       ┌─────────┴──────────────────────────────┐                       │
       │ TaskMovedToStep                        │                       │
       │                                        │                       │
-      │ Infra: connectors de la step réagissent│                       │
+      │ Infra: transports de la step réagissent│                       │
       │                                        │                       │
       │ Si step existe → back to branching ↑   │                       │
       │                                        │                       │
@@ -407,23 +472,23 @@ USER                          SYSTEM                              HUMAN/AGENT
 
 ## Design Decisions
 
-| #   | Decision                                             | Rationale                                                                                                                                                                    |
-| --- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Workspace = catalogues partagés**                  | Les catalogues (steps, agents, tools, skills) sont au niveau workspace. Partagés entre toutes les teams. Une équipe plateforme peut créer des ressources utilisées par tous. |
-| 2   | **Team = workflow**                                  | Chaque team a son workflow (séquence de steps). Configuré une fois, utilisé par toutes les tasks de la team. Remplace "Project" + "Workflow" par une seule entité.           |
-| 3   | **Task = unité de travail qui traverse le workflow** | Une task est créée dans le backlog, puis traverse les steps. Elle accumule deliverables et contenu. Pas de création de N tasks à l'avance.                                   |
-| 4   | **Pas de "Projet" (v1)**                             | "Projet" est réservé pour plus tard (groupement de tasks, tags, epics). Pour v1, on a juste des tasks dans des teams.                                                        |
-| 5   | **Filesystem-first**                                 | Workspace = dossier racine. Team = sous-dossier. Les deliverables sont stockés dans le filesystem.                                                                           |
-| 6   | **Step type = discriminated union extensible**       | AgentStep, HumanStep aujourd'hui. SwarmStep, AutomationStep demain. Pattern Strategy.                                                                                        |
-| 7   | **AgentStep vs HumanStep — symétrie**                | AgentStep : `agentId` = qui. HumanStep : `connector` = comment.                                                                                                              |
-| 8   | **Connectors = step-level**                          | Chaque step a ses propres connectors.                                                                                                                                        |
-| 9   | **Delivery = pure infra**                            | L'infra réagit aux events selon les connectors. Pas d'events domaine.                                                                                                        |
-| 10  | **Pas de StepReady**                                 | Agent finit → auto MoveTaskToStep(next).                                                                                                                                     |
-| 11  | **MoveTaskToStep = command unique**                  | Avancer et reculer sont le même command.                                                                                                                                     |
-| 12  | **Step Catalog avec fork**                           | Steps first-class, lien vivant, fork pour personnaliser.                                                                                                                     |
-| 13  | **Events simplifiés**                                | StepConfigured / AgentUpdated avec diff avant/après.                                                                                                                         |
-| 14  | **Tools & Skills = code-based + catalogue UI**       | Base code-based (Pi). UI en surcouche.                                                                                                                                       |
-| 15  | **Runtime = Pi**                                     | Agents Pi configurables.                                                                                                                                                     |
+| #   | Decision                                              | Rationale                                                                                                                                                                                 |
+| --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Workspace = catalogues partagés**                   | Les catalogues (steps, agents, tools, skills, workflows) sont au niveau workspace. Partagés entre toutes les teams.                                                                       |
+| 2   | **Workflow = entité catalogue séparée**               | Un workflow est un pattern de travail réutilisable (séquence de steps). Vit dans le catalogue global, pas dans une team. Plusieurs projets de teams différentes peuvent utiliser le même. |
+| 3   | **Team = contexte organisationnel + dossier**         | Une team a un dossier dédié et des projets. Elle ne porte plus de workflow — c'est le projet qui fait le lien avec un workflow.                                                           |
+| 4   | **Project = conteneur de tasks + référence workflow** | Un projet appartient à une team, est associé à un workflow, et contient des tasks. Exemples : "Bug Bounty" (long-court), "Feature Auth" (ponctuel).                                       |
+| 5   | **Task = unité atomique dans un projet**              | Une task traverse le workflow du projet. Elle accumule deliverables et contenu. Toute task a un projet (pas de tasks orphelines).                                                         |
+| 6   | **Filesystem-first**                                  | Workspace = dossier racine. Team = sous-dossier. Skills = dossiers avec SKILL.md (à terme). Deliverables stockés sur le filesystem.                                                       |
+| 7   | **Step type = discriminated union extensible**        | AgentStep, HumanStep aujourd'hui. SwarmStep, AutomationStep demain. Pattern Strategy.                                                                                                     |
+| 8   | **AgentStep vs HumanStep — symétrie**                 | AgentStep : `agentId` = qui. HumanStep : `transports` = comment.                                                                                                                          |
+| 9   | **Transports = step-level**                           | Chaque step a ses propres transports. Local par défaut.                                                                                                                                   |
+| 10  | **Delivery = pure infra**                             | L'infra réagit aux events selon les transports. Pas d'events domaine.                                                                                                                     |
+| 11  | **MoveTaskToStep = command unique**                   | Avancer et reculer sont le même command.                                                                                                                                                  |
+| 12  | **Step Catalog avec fork**                            | Steps first-class, lien vivant, fork pour personnaliser.                                                                                                                                  |
+| 13  | **Events simplifiés**                                 | StepConfigured / AgentUpdated avec diff avant/après.                                                                                                                                      |
+| 14  | **Skills = filesystem à terme**                       | Aujourd'hui JSONL, à terme dossiers sur le filesystem (SKILL.md + rules + assets). L'app scanne le dossier.                                                                               |
+| 15  | **Chat = contextualisé**                              | On parle à un agent dans le contexte d'un workspace, d'un projet ou d'une task. L'agent reçoit le contexte approprié.                                                                     |
 
 ---
 
@@ -431,33 +496,37 @@ USER                          SYSTEM                              HUMAN/AGENT
 
 ### Résolus
 
-| Hot Spot                               | Résolution                                                                              |
-| -------------------------------------- | --------------------------------------------------------------------------------------- |
-| Qu'est-ce qu'un Agent ?                | Config éphémère par exécution.                                                          |
-| Swarm vs Agent solo ?                  | Agent solo pour v1.                                                                     |
-| Deliverable polymorphe ?               | Plugin system.                                                                          |
-| Workflow linéaire ?                    | Oui pour v1.                                                                            |
-| Intégrations agentic vs automated ?    | Tools (agent) + connectors (step-level).                                                |
-| Step Catalog model ?                   | Catalogue avec fork.                                                                    |
-| Events granulaires vs simplifiés ?     | Simplifiés : diff avant/après.                                                          |
-| Validation = flag ou step ?            | HumanStep explicite.                                                                    |
-| StepReady nécessaire ?                 | Non.                                                                                    |
-| Advance vs Revert ?                    | MoveTaskToStep unique.                                                                  |
-| Delivery = domaine ou infra ?          | Pure infra.                                                                             |
-| Connectors = step ou workflow ?        | Step-level.                                                                             |
-| AgentStep config vs HumanStep config ? | Symétrie agentId/connector.                                                             |
-| Workflow = entité séparée ?            | Non. La team porte directement sa séquence de steps. Pas d'entité Workflow.             |
-| Project = bonne abstraction ?          | Non pour v1. Renommé en "Team". "Projet" réservé pour le groupement futur (epics/tags). |
+| Hot Spot                               | Résolution                                                                                                                        |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Qu'est-ce qu'un Agent ?                | Config éphémère par exécution.                                                                                                    |
+| Swarm vs Agent solo ?                  | Agent solo pour v1.                                                                                                               |
+| Deliverable polymorphe ?               | Plugin system.                                                                                                                    |
+| Workflow linéaire ?                    | Oui pour v1.                                                                                                                      |
+| Intégrations agentic vs automated ?    | Tools (agent) + transports (step-level).                                                                                          |
+| Step Catalog model ?                   | Catalogue avec fork.                                                                                                              |
+| Events granulaires vs simplifiés ?     | Simplifiés : diff avant/après.                                                                                                    |
+| Validation = flag ou step ?            | HumanStep explicite.                                                                                                              |
+| StepReady nécessaire ?                 | Non.                                                                                                                              |
+| Advance vs Revert ?                    | MoveTaskToStep unique.                                                                                                            |
+| Delivery = domaine ou infra ?          | Pure infra.                                                                                                                       |
+| Transports = step ou workflow ?        | Step-level.                                                                                                                       |
+| AgentStep config vs HumanStep config ? | Symétrie agentId/transports.                                                                                                      |
+| Workflow = entité séparée ?            | **Oui.** Workflow est une entité first-class du catalogue, pas un attribut de Team. Un projet fait le lien Team ↔ Workflow.       |
+| Project = bonne abstraction ?          | **Oui.** Un projet appartient à une team, est associé à un workflow, et contient des tasks. Pas de tasks orphelines.              |
+| Team = workflow ?                      | **Non.** Team = contexte organisationnel + dossier. Workflow = pattern de travail réutilisable. Project = le lien entre les deux. |
 
 ### Ouverts
 
-| #   | Hot Spot                                   | Notes                                                                                                                                 |
-| --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Agent Memory**                           | L'agent pourrait accumuler de la mémoire entre tasks. Reporté.                                                                        |
-| 2   | **MoveTaskToStep — mécanique exacte**      | Quand on bouge une task, que se passe-t-il avec les deliverables des steps "sautées" ? Le métier doit-il restreindre les mouvements ? |
-| 3   | **Modification de team workflow en cours** | Si on modifie le workflow d'une team alors que des tasks sont en cours ?                                                              |
-| 4   | **Deliverable type plugins — discovery**   | Comment le système découvre les plugins ?                                                                                             |
-| 5   | **Contexte agent — granularité**           | Injecter les deliverables précédents dans le prompt ou laisser l'agent explorer le dossier ?                                          |
+| #   | Hot Spot                                  | Notes                                                                                                                                 |
+| --- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Agent Memory**                          | L'agent pourrait accumuler de la mémoire entre tasks. Reporté.                                                                        |
+| 2   | **MoveTaskToStep — mécanique exacte**     | Quand on bouge une task, que se passe-t-il avec les deliverables des steps "sautées" ? Le métier doit-il restreindre les mouvements ? |
+| 3   | **Modification de workflow en cours**     | Si on modifie un workflow alors que des projets l'utilisent ? Snapshot au moment de l'association ?                                   |
+| 4   | **Deliverable type plugins — discovery**  | Comment le système découvre les plugins ?                                                                                             |
+| 5   | **Contexte agent — granularité**          | Injecter les deliverables précédents dans le prompt ou laisser l'agent explorer le dossier ?                                          |
+| 6   | **Chat — scope et persistance**           | L'historique du chat vit où ? Au niveau projet ? Task ? Workspace ? Comment le persister ?                                            |
+| 7   | **Projet archivé vs supprimé**            | Un projet terminé est archivé, pas supprimé ? Quid de l'historique des tasks ?                                                        |
+| 8   | **Plusieurs teams sur un même dossier ?** | Si deux teams bossent sur le même repo, chacune a-t-elle son propre sous-dossier ou partagent-elles ?                                 |
 
 ### Roadmap de collaboration (hors scope v1, direction architecturale)
 

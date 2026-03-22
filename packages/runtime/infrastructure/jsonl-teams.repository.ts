@@ -18,7 +18,7 @@ interface TeamRecord {
 export class JsonlTeamsRepository implements TeamsRepository {
   private cache: Map<TeamId, Team> | null = null;
 
-  constructor(private readonly filePath: string) { }
+  constructor(private readonly filePath: string) {}
 
   async save(team: Team): Promise<void> {
     await this.ensureLoaded();
