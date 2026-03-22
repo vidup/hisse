@@ -1,0 +1,3 @@
+{"kind":"human","id":"0ef92e16-0e72-46f3-9bce-43dd7aa01a33","name":"Validation","description":"Valider l'output d'un agent","createdAt":"2026-03-22T15:13:32.434Z","transports":[{"type":"local","target":"local","configuration":{},"authenticated":false}]}
+{"kind":"agent","id":"36b9302f-31f3-4d04-b878-cfd9389291ae","name":"À creuser","description":"Idées trop vagues pour être démarrées","createdAt":"2026-03-22T15:15:50.389Z","agentId":"281f750a-cd55-4472-a344-395c77b866f5"}
+{"kind":"agent","id":"3e6157e1-4268-4175-bea6-62ee59831ad3","name":"Implementation","description":"Coding","createdAt":"2026-03-22T15:18:57.873Z","agentId":"ac53b5dd-9eb6-4888-a4b8-200264c64715"}
