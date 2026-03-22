@@ -1,91 +1,69 @@
-import { app, ipcMain, dialog, BrowserWindow } from "electron";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-const __dirname$1 = path.dirname(fileURLToPath(import.meta.url));
-let mainWindow = null;
-let workspacePath = "";
-const configPath = path.join(app.getPath("userData"), "workspace-config.json");
-function loadWorkspacePath() {
+import { app as a, ipcMain as s, dialog as l, BrowserWindow as h } from "electron";
+import p from "node:fs";
+import i from "node:path";
+import { fileURLToPath as m } from "node:url";
+const c = i.dirname(m(import.meta.url));
+let n = null, r = "";
+const d = i.join(a.getPath("userData"), "workspace-config.json");
+function g() {
   try {
-    const raw = fs.readFileSync(configPath, "utf-8");
-    const config = JSON.parse(raw);
-    return config.workspacePath ?? null;
+    const e = p.readFileSync(d, "utf-8");
+    return JSON.parse(e).workspacePath ?? null;
   } catch {
     return null;
   }
 }
-function saveWorkspacePath(p) {
-  fs.writeFileSync(configPath, JSON.stringify({ workspacePath: p }), "utf-8");
+function u(e) {
+  p.writeFileSync(d, JSON.stringify({ workspacePath: e }), "utf-8");
 }
-async function pickWorkspaceFolder(parent) {
-  const options = {
+async function f(e) {
+  const o = {
     properties: ["openDirectory"]
-  };
-  const result = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
-  return result.canceled ? null : result.filePaths[0] ?? null;
+  }, t = e ? await l.showOpenDialog(e, o) : await l.showOpenDialog(o);
+  return t.canceled ? null : t.filePaths[0] ?? null;
 }
-function createWindow() {
-  mainWindow = new BrowserWindow({
+function w() {
+  n = new h({
     width: 1400,
     height: 900,
     webPreferences: {
-      preload: path.join(__dirname$1, "../dist-electron/preload.mjs"),
-      nodeIntegration: false,
-      contextIsolation: true
+      preload: i.join(c, "../dist-electron/preload.mjs"),
+      nodeIntegration: !1,
+      contextIsolation: !0
     }
-  });
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname$1, "../dist/index.html"));
-  }
-  mainWindow.on("closed", () => {
-    mainWindow = null;
+  }), process.env.VITE_DEV_SERVER_URL ? (n.loadURL(process.env.VITE_DEV_SERVER_URL), n.webContents.openDevTools()) : n.loadFile(i.join(c, "../dist/index.html")), n.on("closed", () => {
+    n = null;
   });
 }
-ipcMain.handle(
+s.handle(
   "dialog:openDirectory",
-  async (_event, defaultPath) => {
-    if (!mainWindow) return null;
-    const result = await dialog.showOpenDialog(mainWindow, {
+  async (e, o) => {
+    if (!n) return null;
+    const t = await l.showOpenDialog(n, {
       properties: ["openDirectory"],
-      defaultPath: defaultPath ?? workspacePath
+      defaultPath: o ?? r
     });
-    return result.canceled ? null : result.filePaths[0] ?? null;
+    return t.canceled ? null : t.filePaths[0] ?? null;
   }
 );
-ipcMain.handle("workspace:getPath", () => {
-  return workspacePath;
+s.handle("workspace:getPath", () => r);
+s.handle("workspace:change", async () => {
+  const e = await f(n ?? void 0);
+  return e ? (r = e, u(e), e) : null;
 });
-ipcMain.handle("workspace:change", async () => {
-  const selected = await pickWorkspaceFolder(mainWindow ?? void 0);
-  if (!selected) return null;
-  workspacePath = selected;
-  saveWorkspacePath(selected);
-  return selected;
-});
-app.on("ready", async () => {
-  const saved = loadWorkspacePath();
-  if (saved) {
-    workspacePath = saved;
-  } else {
-    const selected = await pickWorkspaceFolder();
-    if (selected) {
-      workspacePath = selected;
-      saveWorkspacePath(selected);
-    }
+a.on("ready", async () => {
+  const e = g();
+  if (e)
+    r = e;
+  else {
+    const o = await f();
+    o && (r = o, u(o));
   }
-  createWindow();
+  w();
 });
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+a.on("window-all-closed", () => {
+  process.platform !== "darwin" && a.quit();
 });
-app.on("activate", () => {
-  if (mainWindow === null) {
-    createWindow();
-  }
+a.on("activate", () => {
+  n === null && w();
 });

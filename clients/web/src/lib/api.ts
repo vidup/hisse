@@ -128,6 +128,16 @@ export interface ProjectSummary {
   updatedAt: string;
 }
 
+export interface ToolSummary {
+  name: string;
+  codePath: string;
+}
+
+export interface ToolDetail {
+  name: string;
+  files: Record<string, string>;
+}
+
 export interface FolderBrowseResult {
   current: string;
   parent: string | null;
@@ -193,6 +203,10 @@ export const api = {
       post<{ ok: boolean }>("/api/workflows", body),
     update: (id: string, body: { steps: string[] }) =>
       put<{ ok: boolean }>(`/api/workflows/${id}`, body),
+  },
+  tools: {
+    list: () => get<ToolSummary[]>("/api/tools"),
+    getByName: (name: string) => get<ToolDetail>(`/api/tools/${encodeURIComponent(name)}`),
   },
   projects: {
     listByTeam: (teamId: string) =>

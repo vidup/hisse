@@ -10,6 +10,8 @@ import { TeamsPage } from "./pages/teams/teams-page";
 import { TeamDetailPage } from "./pages/teams/team-detail-page";
 import { WorkflowsPage } from "./pages/workflows/workflows-page";
 import { WorkflowDetailPage } from "./pages/workflows/workflow-detail-page";
+import { ToolsPage } from "./pages/tools/tools-page";
+import { ToolDetailPage } from "./pages/tools/tool-detail-page";
 
 export const router = createBrowserRouter([
   {
@@ -18,6 +20,8 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/skills" replace /> },
       { path: "skills", element: <SkillsPage /> },
       { path: "skills/:skillId", element: <SkillDetailPage /> },
+      { path: "tools", element: <ToolsPage /> },
+      { path: "tools/:toolName", element: <ToolDetailPage /> },
       { path: "agents", element: <AgentsPage /> },
       { path: "agents/:agentId", element: <AgentDetailPage /> },
       { path: "steps", element: <StepsPage /> },

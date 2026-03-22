@@ -5,6 +5,7 @@ import {
   GitBranchIcon,
   ListChecksIcon,
   SparklesIcon,
+  WrenchIcon,
   UsersIcon,
   WifiIcon,
   WifiOffIcon,
@@ -28,6 +29,7 @@ import {
 
 const navItems = [
   { to: "/skills", label: "Skills", icon: BookOpenIcon },
+  { to: "/tools", label: "Tools", icon: WrenchIcon },
   { to: "/agents", label: "Agents", icon: BotIcon },
   { to: "/steps", label: "Steps", icon: ListChecksIcon },
   { to: "/workflows", label: "Workflows", icon: GitBranchIcon },
