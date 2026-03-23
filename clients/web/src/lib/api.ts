@@ -126,6 +126,31 @@ export interface ProjectSummary {
   updatedAt: string;
 }
 
+export interface TaskSummary {
+  id: string;
+  name: string;
+  description: string;
+  status: "backlog" | "in_progress" | "completed";
+  projectId: string;
+  currentStep: { id: string; index: number } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectDetail {
+  id: string;
+  teamId: string;
+  workflowId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  workflow: {
+    id: string;
+    name: string;
+    steps: Array<{ id: string; name: string; description: string; kind: "agent" | "human"; agentId?: string }>;
+  };
+}
+
 export interface ToolSummary {
   name: string;
   codePath: string;
@@ -203,5 +228,17 @@ export const api = {
       get<ProjectSummary[]>(`/api/teams/${teamId}/projects`),
     create: (teamId: string, body: { name: string; workflowId: string }) =>
       post<{ ok: boolean }>(`/api/teams/${teamId}/projects`, body),
+    getById: (projectId: string) => get<ProjectDetail>(`/api/projects/${projectId}`),
+    getTasks: (projectId: string) => get<TaskSummary[]>(`/api/projects/${projectId}/tasks`),
+    addTask: (projectId: string, body: { name: string; description: string }) =>
+      post<{ ok: boolean }>(`/api/projects/${projectId}/tasks`, body),
+  },
+  tasks: {
+    start: (taskId: string, body: { stepId: string; stepIndex: number }) =>
+      post<{ ok: boolean }>(`/api/tasks/${taskId}/start`, body),
+    move: (taskId: string, body: { stepId: string; stepIndex: number }) =>
+      post<{ ok: boolean }>(`/api/tasks/${taskId}/move`, body),
+    complete: (taskId: string) =>
+      post<{ ok: boolean }>(`/api/tasks/${taskId}/complete`, {}),
   },
 };

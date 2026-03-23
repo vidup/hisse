@@ -32,9 +32,12 @@ import {
   // Projects
   CreateProjectCommandHandler,
   GetProjectsByTeamQueryHandler,
+  GetProjectByIdQueryHandler,
+  GetTasksByProjectQueryHandler,
   AddTaskToProjectCommandHandler,
   StartStepCommandHandler,
   CompleteStepCommandHandler,
+  MoveTaskToStepCommandHandler,
   // Tools
   GetToolsQueryHandler,
 } from "@hisse/runtime";
@@ -98,10 +101,13 @@ export async function createHandlers(workspacePath: string) {
     // Projects
     createProject: new CreateProjectCommandHandler(projectsRepo, workflowsRepo),
     getProjectsByTeam: new GetProjectsByTeamQueryHandler(projectsRepo),
+    getProjectById: new GetProjectByIdQueryHandler(projectsRepo, workflowsRepo, stepsRepo),
+    getTasksByProject: new GetTasksByProjectQueryHandler(tasksRepo),
     // Tasks
     addTaskToProject: new AddTaskToProjectCommandHandler(projectsRepo, tasksRepo),
     startStep: new StartStepCommandHandler(tasksRepo, stepsRepo),
     completeStep: new CompleteStepCommandHandler(tasksRepo),
+    moveTaskToStep: new MoveTaskToStepCommandHandler(tasksRepo, stepsRepo),
     // Tools
     getTools: new GetToolsQueryHandler(toolsRepo),
     // Workspace info

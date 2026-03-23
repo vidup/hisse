@@ -1,0 +1,13 @@
+{
+  "id": "b9fc580f-3db0-4ebd-ba05-6971d06e090b",
+  "name": "Implémenter le drag and drop du board",
+  "description": "Ajouter le support du drag and drop entre les colonnes du board Kanban avec pragmatic-drag-and-drop.",
+  "status": "in_progress",
+  "projectId": "87ddca26-0e14-40e3-9f8c-7a40853e2d7b",
+  "currentStep": {
+    "id": "e001d5d6-37fa-451b-a42e-69bf30e35741",
+    "index": 0
+  },
+  "createdAt": "2026-03-23T00:30:39.554Z",
+  "updatedAt": "2026-03-23T00:30:45.493Z"
+}

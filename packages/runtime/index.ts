@@ -72,6 +72,9 @@ export { AddTaskToProjectCommand, AddTaskToProjectCommandHandler } from "./appli
 export { StartStepCommand, StartStepCommandHandler } from "./application/projects/start-step.command.js";
 export { CompleteStepCommand, CompleteStepCommandHandler } from "./application/projects/complete-step.command.js";
 export { GetProjectsByTeamQuery, GetProjectsByTeamQueryHandler } from "./application/projects/get-projects-by-team.query.js";
+export { GetProjectByIdQuery, GetProjectByIdQueryHandler } from "./application/projects/get-project-by-id.query.js";
+export { GetTasksByProjectQuery, GetTasksByProjectQueryHandler } from "./application/projects/get-tasks-by-project.query.js";
+export { MoveTaskToStepCommand, MoveTaskToStepCommandHandler } from "./application/projects/move-task-to-step.command.js";
 
 // Application — Tools
 export { GetToolsQuery, GetToolsQueryHandler } from "./application/tools/get-tools.query.js";

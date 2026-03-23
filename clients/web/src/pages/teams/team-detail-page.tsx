@@ -54,16 +54,18 @@ export function TeamDetailPage() {
         ) : projects && projects.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
-              <Card key={project.id}>
-                <CardHeader>
-                  <CardTitle>{project.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-xs text-muted-foreground">
-                    Workflow: {project.workflowId}
-                  </div>
-                </CardContent>
-              </Card>
+              <Link key={project.id} to={`/teams/${teamId}/projects/${project.id}`}>
+                <Card className="transition-colors hover:border-primary/50">
+                  <CardHeader>
+                    <CardTitle>{project.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xs text-muted-foreground">
+                      Workflow: {project.workflowId}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         ) : (

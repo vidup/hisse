@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { Task, TaskId, TaskStatus } from "../domain/model/task.js";
+import { Task, TaskId, TaskStatus, TaskCurrentStep } from "../domain/model/task.js";
 import { ProjectId } from "../domain/model/project.js";
 import type { TasksRepository } from "../domain/ports/tasks.repository.js";
 
@@ -10,7 +10,7 @@ interface TaskRecord {
   description: string;
   status: TaskStatus;
   projectId: string;
-  stepId: string | null;
+  currentStep: { id: string; index: number } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,7 +37,7 @@ export class FsTasksRepository implements TasksRepository {
       description: task.description,
       status: task.status,
       projectId: task.projectId,
-      stepId: task.stepId,
+      currentStep: task.currentStep ? { id: task.currentStep.id, index: task.currentStep.index } : null,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
@@ -182,7 +182,7 @@ export class FsTasksRepository implements TasksRepository {
       new Date(record.updatedAt),
       record.status,
       record.projectId,
-      record.stepId,
+      record.currentStep ? new TaskCurrentStep(record.currentStep.id, record.currentStep.index) : null,
     );
   }
 }

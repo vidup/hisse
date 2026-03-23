@@ -22,6 +22,7 @@
     "vite-plugin-electron": "^0.29.1"
   },
   "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",
     "@fontsource-variable/raleway": "^5.2.8",
     "@tanstack/react-query": "^5.94.5",
     "class-variance-authority": "^0.7.1",
