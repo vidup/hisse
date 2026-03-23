@@ -41,6 +41,14 @@ import {
   // Tools
   GetToolsQueryHandler,
 } from "@hisse/runtime";
+import {
+  FsConnectorsRepository,
+  GetConnectorsQueryHandler,
+  GetConnectorByProviderQueryHandler,
+  SaveApiKeyConnectorCommandHandler,
+  SaveOAuthConnectorCommandHandler,
+  RemoveConnectorCommandHandler,
+} from "@hisse/connectors";
 
 export function getWorkspaceFromRequest(request: FastifyRequest): string {
   const workspace = request.headers["x-workspace-path"];
@@ -60,6 +68,7 @@ export function resolveWorkspace(workspacePath: string) {
     workflows: path.join(base, "workflows"),
     teams: path.join(base, "teams"),
     tools: path.join(base, "tools"),
+    connectors: path.join(base, "connectors"),
   };
 }
 
@@ -74,6 +83,7 @@ export async function createHandlers(workspacePath: string) {
   const projectsRepo = new FsProjectsRepository(ws.teams);
   const tasksRepo = new FsTasksRepository(ws.teams);
   const toolsRepo = new FsToolsRepository(ws.tools);
+  const connectorsRepo = new FsConnectorsRepository(ws.connectors);
 
   await skillsRepo.preload();
 
@@ -110,6 +120,12 @@ export async function createHandlers(workspacePath: string) {
     moveTaskToStep: new MoveTaskToStepCommandHandler(tasksRepo, stepsRepo),
     // Tools
     getTools: new GetToolsQueryHandler(toolsRepo),
+    // Connectors
+    getConnectors: new GetConnectorsQueryHandler(connectorsRepo),
+    getConnectorByProvider: new GetConnectorByProviderQueryHandler(connectorsRepo),
+    saveApiKeyConnector: new SaveApiKeyConnectorCommandHandler(connectorsRepo),
+    saveOAuthConnector: new SaveOAuthConnectorCommandHandler(connectorsRepo),
+    removeConnector: new RemoveConnectorCommandHandler(connectorsRepo),
     // Workspace info
     workspacePath,
   };

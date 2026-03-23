@@ -53,6 +53,15 @@ async function put<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(path, {
+    method: "DELETE",
+    headers: { ...workspaceHeaders() },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<T>;
+}
+
 // Types matching API responses
 export interface SkillSummary {
   id: string;
@@ -161,6 +170,18 @@ export interface ToolDetail {
   files: Record<string, string>;
 }
 
+export interface ConnectorSummary {
+  provider: string;
+  method: "api_key" | "oauth";
+  apiKey?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: string;
+  status: "connected" | "expired" | "error";
+  connectedAt: string;
+  updatedAt: string;
+}
+
 const w = DEFAULT_WORKSPACE_ID;
 
 export const api = {
@@ -240,5 +261,20 @@ export const api = {
       post<{ ok: boolean }>(`/api/tasks/${taskId}/move`, body),
     complete: (taskId: string) =>
       post<{ ok: boolean }>(`/api/tasks/${taskId}/complete`, {}),
+  },
+  connectors: {
+    list: () => get<ConnectorSummary[]>(`/api/workspaces/${w}/connectors`),
+    getByProvider: (provider: string) =>
+      get<ConnectorSummary>(`/api/workspaces/${w}/connectors/${encodeURIComponent(provider)}`),
+    saveApiKey: (body: { provider: string; apiKey: string }) =>
+      post<{ ok: boolean }>(`/api/workspaces/${w}/connectors/api-key`, body),
+    saveOAuth: (body: {
+      provider: string;
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: string;
+    }) => post<{ ok: boolean }>(`/api/workspaces/${w}/connectors/oauth`, body),
+    remove: (provider: string) =>
+      del<{ ok: boolean }>(`/api/workspaces/${w}/connectors/${encodeURIComponent(provider)}`),
   },
 };

@@ -13,6 +13,7 @@ import { WorkflowDetailPage } from "./pages/workflows/workflow-detail-page";
 import { ToolsPage } from "./pages/tools/tools-page";
 import { ToolDetailPage } from "./pages/tools/tool-detail-page";
 import { ProjectDetailPage } from "./pages/projects/project-detail-page";
+import { ConnectorsPage } from "./pages/connectors/connectors-page";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       { path: "teams", element: <TeamsPage /> },
       { path: "teams/:teamId", element: <TeamDetailPage /> },
       { path: "teams/:teamId/projects/:projectId", element: <ProjectDetailPage /> },
+      { path: "connectors", element: <ConnectorsPage /> },
     ],
   },
 ]);
