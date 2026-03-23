@@ -9,6 +9,7 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@/components/ui/empty";
+import { PageLayout } from "@/layouts/page-layout";
 import { useAgents } from "@/hooks/use-agents";
 import { AgentCard } from "./agent-card";
 import { CreateAgentDialog } from "./create-agent-dialog";
@@ -18,15 +19,15 @@ export function AgentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-xl font-semibold">Agents</h1>
+    <PageLayout
+      title="Agents"
+      action={
         <Button onClick={() => setDialogOpen(true)}>
           <PlusIcon data-icon="inline-start" />
           New Agent
         </Button>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -52,6 +53,6 @@ export function AgentsPage() {
       )}
 
       <CreateAgentDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageLayout>
   );
 }

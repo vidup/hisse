@@ -10,6 +10,7 @@ import {
   EmptyDescription,
   EmptyContent,
 } from "@/components/ui/empty";
+import { PageLayout } from "@/layouts/page-layout";
 import { useSkills } from "@/hooks/use-skills";
 import { SkillCard } from "./skill-card";
 import { CreateSkillDialog } from "./create-skill-dialog";
@@ -19,20 +20,15 @@ export function SkillsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <div className="grid gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-bold tracking-tight">Skills</h1>
-          <p className="text-sm text-muted-foreground">
-            Reusable knowledge and instructions for your agents.
-          </p>
-        </div>
+    <PageLayout
+      title="Skills"
+      action={
         <Button onClick={() => setDialogOpen(true)}>
           <PlusIcon data-icon="inline-start" />
           New Skill
         </Button>
-      </div>
-
+      }
+    >
       {isLoading && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -74,6 +70,6 @@ export function SkillsPage() {
       )}
 
       <CreateSkillDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageLayout>
   );
 }

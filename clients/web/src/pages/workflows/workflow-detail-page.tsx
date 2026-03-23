@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, Link } from "react-router";
-import { ArrowLeftIcon, PlusIcon, SaveIcon, ListChecksIcon } from "lucide-react";
+import { useParams } from "react-router";
+import { PlusIcon, SaveIcon, ListChecksIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +18,7 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@/components/ui/empty";
+import { PageLayout } from "@/layouts/page-layout";
 import { useWorkflow, useUpdateWorkflow } from "@/hooks/use-workflows";
 import { useStepsLibrary } from "@/hooks/use-steps";
 import { WorkflowStepItem } from "./workflow-step-item";
@@ -88,24 +89,18 @@ export function WorkflowDetailPage() {
   const isLoading = isWorkflowLoading || isStepsLoading;
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon-sm" asChild>
-          <Link to="/workflows">
-            <ArrowLeftIcon />
-          </Link>
+    <PageLayout
+      title={workflow?.name ?? workflowId ?? "..."}
+      backTo="/workflows"
+      action={
+        <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+          <SaveIcon data-icon="inline-start" />
+          {isSaving ? "Saving..." : "Save Workflow"}
         </Button>
-        <h1 className="font-heading text-xl font-semibold">{workflow?.name ?? workflowId}</h1>
-      </div>
-
+      }
+    >
       <div className="grid gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Steps</h2>
-          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-            <SaveIcon data-icon="inline-start" />
-            {isSaving ? "Saving..." : "Save Workflow"}
-          </Button>
-        </div>
+        <h2 className="text-lg font-medium">Steps</h2>
 
         {isLoading ? (
           <div className="grid gap-3">
@@ -167,6 +162,6 @@ export function WorkflowDetailPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

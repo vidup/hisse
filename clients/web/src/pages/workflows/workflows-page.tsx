@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { PlusIcon, GitBranchIcon } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -11,6 +10,7 @@ import {
   EmptyDescription,
   EmptyContent,
 } from "@/components/ui/empty";
+import { PageLayout } from "@/layouts/page-layout";
 import { useWorkflows } from "@/hooks/use-workflows";
 import { WorkflowCard } from "./workflow-card";
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
@@ -20,15 +20,15 @@ export function WorkflowsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-xl font-semibold">Workflows</h1>
+    <PageLayout
+      title="Workflows"
+      action={
         <Button onClick={() => setDialogOpen(true)}>
           <PlusIcon data-icon="inline-start" />
           New Workflow
         </Button>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -62,6 +62,6 @@ export function WorkflowsPage() {
       )}
 
       <CreateWorkflowDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageLayout>
   );
 }

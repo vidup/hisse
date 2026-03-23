@@ -10,9 +10,9 @@ export function AppLayout() {
     <RightPanelProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
-          <div className="flex min-h-svh">
-            <main className="flex flex-1 flex-col gap-6 p-6">
+        <SidebarInset className="overflow-hidden">
+          <div className="flex h-full overflow-hidden">
+            <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <Outlet />
             </main>
             <RightPanel />

@@ -1,9 +1,9 @@
-import { useParams, Link } from "react-router";
-import { ArrowLeftIcon, FileCodeIcon } from "lucide-react";
+import { useParams } from "react-router";
+import { FileCodeIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageLayout } from "@/layouts/page-layout";
 import { useTool } from "@/hooks/use-tools";
 
 export function ToolDetailPage() {
@@ -11,16 +11,7 @@ export function ToolDetailPage() {
   const { data: tool, isLoading } = useTool(toolName!);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon-sm" asChild>
-          <Link to="/tools">
-            <ArrowLeftIcon />
-          </Link>
-        </Button>
-        <h1 className="font-heading text-xl font-semibold">{toolName}</h1>
-      </div>
-
+    <PageLayout title={toolName ?? "..."} backTo="/tools">
       {isLoading && (
         <div className="grid gap-4">
           <Skeleton className="h-64 rounded-xl" />
@@ -46,6 +37,6 @@ export function ToolDetailPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router";
-import { ArrowLeftIcon } from "lucide-react";
+import { useParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageLayoutWithPanel } from "@/layouts/page-layout";
 import { useSkill, useUpdateSkill } from "@/hooks/use-skills";
 
 export function SkillDetailPage() {
@@ -46,34 +46,39 @@ export function SkillDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-6 p-6">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-4 w-28" />
-        </div>
-        <Skeleton className="h-8 w-64" />
+      <PageLayoutWithPanel
+        title="..."
+        backTo="/skills"
+        panel={<Skeleton className="h-64 w-full" />}
+      >
         <div className="grid gap-4">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
-      </div>
+      </PageLayoutWithPanel>
     );
   }
 
   return (
-    <div className="grid gap-6 p-6">
-      <div>
-        <Button variant="link" asChild className="h-auto p-0 text-muted-foreground">
-          <Link to="/skills" className="flex items-center gap-1.5">
-            <ArrowLeftIcon data-icon="inline-start" className="size-4" />
-            Back to Skills
-          </Link>
+    <PageLayoutWithPanel
+      title={name || "Skill"}
+      backTo="/skills"
+      action={
+        <Button type="submit" form="skill-form" disabled={!isDirty() || isPending}>
+          {isPending ? "Saving..." : saved ? "Saved!" : "Save Changes"}
         </Button>
-      </div>
-
-      <h1 className="text-2xl font-bold tracking-tight">{name || "Skill"}</h1>
-
-      <form onSubmit={handleSave} className="grid gap-4 max-w-2xl">
+      }
+      panel={
+        <div className="flex flex-col gap-3">
+          <h3 className="font-heading text-sm font-medium">Content Preview</h3>
+          <pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
+            {content}
+          </pre>
+        </div>
+      }
+    >
+      <form id="skill-form" onSubmit={handleSave} className="grid gap-4 max-w-2xl">
         <div className="grid gap-2">
           <Label htmlFor="detail-name">Name</Label>
           <Input id="detail-name" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -98,12 +103,7 @@ export function SkillDetailPage() {
             required
           />
         </div>
-        <div>
-          <Button type="submit" disabled={!isDirty() || isPending}>
-            {isPending ? "Saving..." : saved ? "Saved!" : "Save Changes"}
-          </Button>
-        </div>
       </form>
-    </div>
+    </PageLayoutWithPanel>
   );
 }

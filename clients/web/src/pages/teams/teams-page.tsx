@@ -10,6 +10,7 @@ import {
   EmptyDescription,
   EmptyContent,
 } from "@/components/ui/empty";
+import { PageLayout } from "@/layouts/page-layout";
 import { useTeams } from "@/hooks/use-teams";
 import { TeamCard } from "./team-card";
 import { CreateTeamDialog } from "./create-team-dialog";
@@ -19,15 +20,15 @@ export function TeamsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-xl font-semibold">Teams</h1>
+    <PageLayout
+      title="Teams"
+      action={
         <Button onClick={() => setDialogOpen(true)}>
           <PlusIcon data-icon="inline-start" />
           New Team
         </Button>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -59,6 +60,6 @@ export function TeamsPage() {
       )}
 
       <CreateTeamDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageLayout>
   );
 }

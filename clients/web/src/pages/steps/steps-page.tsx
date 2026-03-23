@@ -10,6 +10,7 @@ import {
   EmptyDescription,
   EmptyContent,
 } from "@/components/ui/empty";
+import { PageLayout } from "@/layouts/page-layout";
 import { useStepsLibrary } from "@/hooks/use-steps";
 import { StepCard } from "./step-card";
 import { CreateStepDialog } from "./create-step-dialog";
@@ -19,15 +20,15 @@ export function StepsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-xl font-semibold">Steps Library</h1>
+    <PageLayout
+      title="Steps Library"
+      action={
         <Button onClick={() => setDialogOpen(true)}>
           <PlusIcon data-icon="inline-start" />
           New Step
         </Button>
-      </div>
-
+      }
+    >
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -61,6 +62,6 @@ export function StepsPage() {
       )}
 
       <CreateStepDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </PageLayout>
   );
 }

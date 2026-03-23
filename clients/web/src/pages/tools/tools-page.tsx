@@ -7,6 +7,7 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@/components/ui/empty";
+import { PageLayout } from "@/layouts/page-layout";
 import { useTools } from "@/hooks/use-tools";
 import { ToolCard } from "./tool-card";
 
@@ -14,15 +15,7 @@ export function ToolsPage() {
   const { data: tools, isLoading } = useTools();
 
   return (
-    <div className="grid gap-6 p-6">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">Tools</h1>
-        <p className="text-sm text-muted-foreground">
-          Tools discovered in the workspace. Add a tool by placing a folder in{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-xs">.hisse/tools/</code>.
-        </p>
-      </div>
-
+    <PageLayout title="Tools">
       {isLoading && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -52,6 +45,6 @@ export function ToolsPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }
