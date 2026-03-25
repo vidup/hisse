@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateAgent } from "@/hooks/use-agents";
 import { useSkills } from "@/hooks/use-skills";
+import { useTools } from "@/hooks/use-tools";
 
 interface CreateAgentDialogProps {
   open: boolean;
@@ -37,9 +38,11 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+  const [selectedToolNames, setSelectedToolNames] = useState<string[]>([]);
 
   const { mutate, isPending } = useCreateAgent();
   const { data: skills } = useSkills();
+  const { data: tools } = useTools();
 
   function reset() {
     setName("");
@@ -48,11 +51,18 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
     setProvider("");
     setModel("");
     setSelectedSkillIds([]);
+    setSelectedToolNames([]);
   }
 
   function toggleSkill(skillId: string) {
     setSelectedSkillIds((prev) =>
       prev.includes(skillId) ? prev.filter((id) => id !== skillId) : [...prev, skillId],
+    );
+  }
+
+  function toggleTool(toolName: string) {
+    setSelectedToolNames((prev) =>
+      prev.includes(toolName) ? prev.filter((n) => n !== toolName) : [...prev, toolName],
     );
   }
 
@@ -65,7 +75,7 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
         systemPrompt,
         provider,
         model,
-        tools: [],
+        tools: selectedToolNames,
         skills: selectedSkillIds,
       },
       {
@@ -158,6 +168,24 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
                         onCheckedChange={() => toggleSkill(skill.id)}
                       />
                       {skill.name}
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+          {tools && tools.length > 0 && (
+            <div className="grid gap-2">
+              <Label>Tools</Label>
+              <ScrollArea className="h-32 rounded-lg border border-input p-2">
+                <div className="flex flex-col gap-2">
+                  {tools.map((tool) => (
+                    <label key={tool.name} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={selectedToolNames.includes(tool.name)}
+                        onCheckedChange={() => toggleTool(tool.name)}
+                      />
+                      {tool.name}
                     </label>
                   ))}
                 </div>

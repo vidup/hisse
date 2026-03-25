@@ -72,6 +72,19 @@ export function AgentDetailPage() {
           </div>
         )}
 
+        {config.tools.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium">Tools</h2>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {config.tools.map((toolName) => (
+                <Badge key={toolName} variant="secondary">
+                  {toolName}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-medium">System Prompt</h2>
           <pre className="whitespace-pre-wrap rounded-xl bg-muted/30 p-4 font-mono text-sm text-muted-foreground">

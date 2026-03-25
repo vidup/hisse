@@ -29,6 +29,15 @@ export function AgentCard({ agent }: AgentCardProps) {
               ))}
             </div>
           )}
+          {agent.tools.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              {agent.tools.map((toolName) => (
+                <Badge key={toolName} variant="secondary">
+                  {toolName}
+                </Badge>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </Link>
