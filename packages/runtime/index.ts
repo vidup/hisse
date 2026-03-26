@@ -1,5 +1,13 @@
 // Domain — Ports
 export type { HealthPort } from "./domain/ports/health.port.js";
+export type { AgentsRepository } from "./domain/ports/agents.repository.js";
+export type { SkillsRepository } from "./domain/ports/skills.repository.js";
+
+// Domain — Models
+export type { AgentId } from "./domain/model/agent.js";
+export { Agent } from "./domain/model/agent.js";
+export type { SkillId } from "./domain/model/skill.js";
+export { Skill } from "./domain/model/skill.js";
 
 // Application — Health
 export { HealthCheckQuery, HealthCheckQueryHandler } from "./application/health-check.query.js";
@@ -78,3 +86,20 @@ export { MoveTaskToStepCommand, MoveTaskToStepCommandHandler } from "./applicati
 
 // Application — Tools
 export { GetToolsQuery, GetToolsQueryHandler } from "./application/tools/get-tools.query.js";
+
+// Domain — Chat
+export { Conversation, ConversationCreatedEvent } from "./domain/model/conversation.js";
+export type { ConversationId, ConversationEvent } from "./domain/model/conversation.js";
+export type { AgentRuntime, AgentSessionHandle, AgentStreamEvent, AgentMessage } from "./domain/ports/agent-runtime.js";
+export type { ConversationsRepository } from "./domain/ports/conversations.repository.js";
+export { parseMentions, parseSkillInvocations } from "./domain/services/parse-input.js";
+
+// Infrastructure — Chat
+export { FsConversationsRepository } from "./infrastructure/fs-conversations.repository.js";
+export { PiAgentRuntime, type CredentialEntry } from "./infrastructure/pi-agent-runtime.js";
+
+// Application — Chat
+export { StartConversationCommand, StartConversationCommandHandler } from "./application/chat/start-conversation.command.js";
+export { SendMessageCommand, SendMessageCommandHandler } from "./application/chat/send-message.command.js";
+export { GetConversationsQuery, GetConversationsQueryHandler } from "./application/chat/get-conversations.query.js";
+export { GetConversationQuery, GetConversationQueryHandler } from "./application/chat/get-conversation.query.js";
