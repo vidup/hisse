@@ -9,6 +9,8 @@ import {
   FsProjectsRepository,
   FsTasksRepository,
   FsToolsRepository,
+  FsConversationsRepository,
+  PiAgentRuntime,
   // Skills
   CreateSkillCommandHandler,
   GetSkillsQueryHandler,
@@ -40,6 +42,11 @@ import {
   MoveTaskToStepCommandHandler,
   // Tools
   GetToolsQueryHandler,
+  // Chat
+  StartConversationCommandHandler,
+  SendMessageCommandHandler,
+  GetConversationsQueryHandler,
+  GetConversationQueryHandler,
 } from "@hisse/runtime";
 import {
   FsConnectorsRepository,
@@ -69,6 +76,8 @@ export function resolveWorkspace(workspacePath: string) {
     teams: path.join(base, "teams"),
     tools: path.join(base, "tools"),
     connectors: path.join(base, "connectors"),
+    conversations: path.join(base, "conversations"),
+    sessions: path.join(base, "sessions"),
   };
 }
 
@@ -84,8 +93,22 @@ export async function createHandlers(workspacePath: string) {
   const tasksRepo = new FsTasksRepository(ws.teams);
   const toolsRepo = new FsToolsRepository(ws.tools);
   const connectorsRepo = new FsConnectorsRepository(ws.connectors);
+  const conversationsRepo = new FsConversationsRepository(ws.conversations);
 
   await skillsRepo.preload();
+
+  const loadCredentials = async () => {
+    const connectors = await connectorsRepo.findAll();
+    return connectors.map((c) => ({
+      provider: c.provider,
+      method: c.method,
+      apiKey: c.method === "api_key" ? c.apiKey : undefined,
+      accessToken: c.method === "oauth" ? c.accessToken : undefined,
+      refreshToken: c.method === "oauth" ? c.refreshToken : undefined,
+      expiresAt: c.method === "oauth" ? c.expiresAt : undefined,
+    }));
+  };
+  const agentRuntime = new PiAgentRuntime(loadCredentials, ws.conversations);
 
   return {
     // Skills
@@ -126,6 +149,11 @@ export async function createHandlers(workspacePath: string) {
     saveApiKeyConnector: new SaveApiKeyConnectorCommandHandler(connectorsRepo),
     saveOAuthConnector: new SaveOAuthConnectorCommandHandler(connectorsRepo),
     removeConnector: new RemoveConnectorCommandHandler(connectorsRepo),
+    // Chat
+    getConversations: new GetConversationsQueryHandler(conversationsRepo),
+    getConversation: new GetConversationQueryHandler(conversationsRepo, agentRuntime),
+    sendMessage: new SendMessageCommandHandler(conversationsRepo, agentsRepo, skillsRepo, agentRuntime),
+    startConversation: new StartConversationCommandHandler(conversationsRepo, agentsRepo, skillsRepo, agentRuntime),
     // Workspace info
     workspacePath,
   };
