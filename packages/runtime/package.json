@@ -8,6 +8,9 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "@mariozechner/pi-coding-agent": "^0.62.0"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "echo \"no tests yet\""
