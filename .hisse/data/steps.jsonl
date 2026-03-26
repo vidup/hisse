@@ -1,3 +1,0 @@
-{"kind":"human","id":"137f41ab-836d-4f4f-81a4-970095f75302","name":"Validation","description":"Human validation","createdAt":"2026-03-22T22:18:27.523Z","transports":[{"type":"local","target":"local","configuration":{},"authenticated":false}]}
-{"kind":"agent","id":"13f600dc-e60e-4969-ac23-a759587ab82a","name":"Implementation","description":"Coding step","createdAt":"2026-03-22T22:21:17.271Z","agentId":"df9eb67e-e6b5-4a1c-9d16-eaa5acdadf8c"}
-{"kind":"agent","id":"8e27f5fc-8891-40a3-83d2-48896c943438","name":"Review","description":"Code review","createdAt":"2026-03-22T22:22:49.308Z","agentId":"7bf823c1-0310-4134-bfdd-6317e3c9b7f4"}

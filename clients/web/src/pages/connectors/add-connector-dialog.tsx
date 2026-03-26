@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { useSaveApiKeyConnector, useSaveOAuthConnector } from "@/hooks/use-connectors";
 
-const PROVIDERS = ["openai", "anthropic", "google", "ollama", "custom"] as const;
+const PROVIDERS = ["openai-codex", "anthropic", "google", "ollama", "custom"] as const;
 
 interface AddConnectorDialogProps {
   open: boolean;
@@ -27,7 +27,11 @@ interface AddConnectorDialogProps {
   defaultProvider?: string;
 }
 
-export function AddConnectorDialog({ open, onOpenChange, defaultProvider }: AddConnectorDialogProps) {
+export function AddConnectorDialog({
+  open,
+  onOpenChange,
+  defaultProvider,
+}: AddConnectorDialogProps) {
   const [provider, setProvider] = useState(defaultProvider ?? "");
   const [method, setMethod] = useState<"api_key" | "oauth">("api_key");
   const [apiKey, setApiKey] = useState("");

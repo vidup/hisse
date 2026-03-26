@@ -29,7 +29,7 @@ interface CreateAgentDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const PROVIDERS = ["anthropic", "openai", "google", "ollama", "custom"] as const;
+const PROVIDERS = ["anthropic", "openai-codex", "google", "ollama", "custom"] as const;
 
 export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps) {
   const [name, setName] = useState("");
