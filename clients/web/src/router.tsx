@@ -14,6 +14,7 @@ import { ToolsPage } from "./pages/tools/tools-page";
 import { ToolDetailPage } from "./pages/tools/tool-detail-page";
 import { ProjectDetailPage } from "./pages/projects/project-detail-page";
 import { ConnectorsPage } from "./pages/connectors/connectors-page";
+import { ChatPage } from "./pages/chat/chat-page";
 
 export const router = createBrowserRouter([
   {
@@ -33,6 +34,8 @@ export const router = createBrowserRouter([
       { path: "teams/:teamId", element: <TeamDetailPage /> },
       { path: "teams/:teamId/projects/:projectId", element: <ProjectDetailPage /> },
       { path: "connectors", element: <ConnectorsPage /> },
+      { path: "chat", element: <ChatPage /> },
+      { path: "chat/:conversationId", element: <ChatPage /> },
     ],
   },
 ]);

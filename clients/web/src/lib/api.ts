@@ -182,6 +182,35 @@ export interface ConnectorSummary {
   updatedAt: string;
 }
 
+async function fetchSSE(path: string, body: unknown): Promise<Response> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...workspaceHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  return res;
+}
+
+// Chat types
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  agentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentMessageSummary {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+export interface ConversationDetail extends ConversationSummary {
+  messages: AgentMessageSummary[];
+}
+
 const w = DEFAULT_WORKSPACE_ID;
 
 export const api = {
@@ -276,5 +305,12 @@ export const api = {
     }) => post<{ ok: boolean }>(`/api/workspaces/${w}/connectors/oauth`, body),
     remove: (provider: string) =>
       del<{ ok: boolean }>(`/api/workspaces/${w}/connectors/${encodeURIComponent(provider)}`),
+  },
+  chat: {
+    list: () => get<ConversationSummary[]>("/api/conversations"),
+    getById: (id: string) => get<ConversationDetail>(`/api/conversations/${id}`),
+    start: (content: string) => fetchSSE("/api/conversations", { content }),
+    sendMessage: (id: string, content: string) =>
+      fetchSSE(`/api/conversations/${id}/messages`, { content }),
   },
 };

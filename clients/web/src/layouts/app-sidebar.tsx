@@ -4,6 +4,7 @@ import {
   BotIcon,
   GitBranchIcon,
   ListChecksIcon,
+  MessageSquareIcon,
   PlugIcon,
   SparklesIcon,
   WrenchIcon,
@@ -36,6 +37,7 @@ const navItems = [
   { to: "/workflows", label: "Workflows", icon: GitBranchIcon },
   { to: "/teams", label: "Teams", icon: UsersIcon },
   { to: "/connectors", label: "Connectors", icon: PlugIcon },
+  { to: "/chat", label: "Chat", icon: MessageSquareIcon },
 ];
 
 export function AppSidebar() {
