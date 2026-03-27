@@ -8,6 +8,8 @@ export type { AgentId } from "./domain/model/agent.js";
 export { Agent } from "./domain/model/agent.js";
 export type { SkillId } from "./domain/model/skill.js";
 export { Skill } from "./domain/model/skill.js";
+export { Message } from "./domain/model/message.js";
+export type { MessageId, MessageRole, MessageStatus } from "./domain/model/message.js";
 
 // Application — Health
 export { HealthCheckQuery, HealthCheckQueryHandler } from "./application/health-check.query.js";

@@ -4,6 +4,7 @@ import type { ConversationsRepository } from "../../domain/ports/conversations.r
 import type { AgentRuntime, AgentStreamEvent } from "../../domain/ports/agent-runtime.js";
 import { Conversation } from "../../domain/model/conversation.js";
 import { parseMentions, parseSkillInvocations } from "../../domain/services/parse-input.js";
+import { persistConversationStream } from "./persist-conversation-stream.js";
 
 export class StartConversationCommand {
   constructor(public readonly content: string) {}
@@ -36,9 +37,9 @@ export class StartConversationCommandHandler {
 
     const title = command.content.replace(/@\w[\w-]*/g, "").trim().slice(0, 60) || `Chat with ${agent.name}`;
     const conversation = Conversation.create({ title, agentId: agent.id });
+    conversation.addUserMessage(command.content);
     await this.conversationsRepo.save(conversation);
 
-    // Pre-inject skills
     const skillNames = parseSkillInvocations(command.content);
     let skillContext = "";
     if (skillNames.length > 0) {
@@ -60,7 +61,12 @@ export class StartConversationCommandHandler {
       model: agent.model,
     });
 
-    const stream = session.prompt(command.content);
+    const source = session.prompt(command.content);
+    const stream = persistConversationStream({
+      conversation,
+      source,
+      conversationsRepo: this.conversationsRepo,
+    });
 
     return { conversationId: conversation.id, stream, agentId: agent.id };
   }

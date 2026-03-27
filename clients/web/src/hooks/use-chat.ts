@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type AgentMessageSummary } from "@/lib/api";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, type ChatStreamEvent, type ConversationDetail } from "@/lib/api";
 
 export function useConversations() {
   return useQuery({ queryKey: ["conversations"], queryFn: api.chat.list });
@@ -14,93 +14,150 @@ export function useConversation(id: string | undefined) {
   });
 }
 
+interface SendMessageParams {
+  conversationId?: string;
+  content: string;
+  onConversationCreated?: (conversationId: string) => void;
+}
+
+interface SendMessageResult {
+  conversationId?: string;
+  agentId?: string;
+  fullContent: string;
+  error?: string;
+}
+
+export type ChatStreamPhase = "idle" | "starting" | "thinking" | "streaming";
+
 export function useSendMessage() {
   const qc = useQueryClient();
   const [streamingContent, setStreamingContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [streamPhase, setStreamPhase] = useState<ChatStreamPhase>("idle");
+  const [streamAgentId, setStreamAgentId] = useState<string | undefined>();
 
   const send = useCallback(
-    async (params: { conversationId?: string; content: string }) => {
+    async (params: SendMessageParams): Promise<SendMessageResult | null> => {
       setIsStreaming(true);
       setStreamingContent("");
+      setErrorMessage(null);
+      setStreamPhase("starting");
+      setStreamAgentId(undefined);
 
-      // Optimistically add user message to the cache
-      if (params.conversationId) {
-        qc.setQueryData<any>(["conversations", params.conversationId], (old: any) => {
+      const conversationQueryKey = params.conversationId
+        ? (["conversations", params.conversationId] as const)
+        : null;
+      const previousConversation = conversationQueryKey
+        ? qc.getQueryData<ConversationDetail>(conversationQueryKey)
+        : undefined;
+
+      if (conversationQueryKey) {
+        qc.setQueryData<ConversationDetail | undefined>(conversationQueryKey, (old) => {
           if (!old) return old;
           return {
             ...old,
             messages: [
-              ...(old.messages ?? []),
+              ...old.messages,
               { role: "user", content: params.content, timestamp: new Date().toISOString() },
             ],
           };
         });
       }
 
-      try {
-        const response = params.conversationId
-          ? await api.chat.sendMessage(params.conversationId, params.content)
-          : await api.chat.start(params.content);
+      let conversationId = params.conversationId;
+      let agentId: string | undefined;
+      let fullContent = "";
+      let streamError: string | undefined;
+      let didNotifyConversationCreated = false;
 
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error("No response body");
-
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let fullContent = "";
-        let conversationId = params.conversationId;
-        let agentId: string | undefined;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("event: ")) {
-              const eventType = line.slice(7);
-              // Next line should be data
-              continue;
+      const handleEvent = (event: ChatStreamEvent) => {
+        switch (event.type) {
+          case "meta":
+            conversationId = event.conversationId;
+            agentId = event.agentId;
+            setStreamAgentId(event.agentId);
+            setStreamPhase("thinking");
+            if (!params.conversationId && !didNotifyConversationCreated) {
+              didNotifyConversationCreated = true;
+              params.onConversationCreated?.(event.conversationId);
             }
-            if (line.startsWith("data: ")) {
-              const data = JSON.parse(line.slice(6));
+            void qc.invalidateQueries({ queryKey: ["conversations"] });
+            return;
 
-              if (data.conversationId && !conversationId) {
-                conversationId = data.conversationId;
-              }
-              if (data.agentId) {
-                agentId = data.agentId;
-              }
-              if (data.content) {
-                fullContent += data.content;
-                setStreamingContent(fullContent);
-              }
+          case "delta":
+            fullContent += event.content;
+            setStreamPhase("streaming");
+            setStreamingContent(fullContent);
+            return;
+
+          case "done":
+            conversationId = event.conversationId;
+            agentId = event.agentId;
+            setStreamAgentId(event.agentId);
+            if (!fullContent && event.fullContent) {
+              fullContent = event.fullContent;
+              setStreamPhase("streaming");
+              setStreamingContent(fullContent);
             }
-          }
+            return;
+
+          case "error":
+            conversationId = event.conversationId;
+            agentId = event.agentId;
+            setStreamAgentId(event.agentId);
+            streamError = event.error;
+            return;
         }
+      };
 
-        // Streaming complete — invalidate queries
-        setStreamingContent("");
-        setIsStreaming(false);
+      try {
+        if (params.conversationId) {
+          await api.chat.sendMessage(params.conversationId, params.content, { onEvent: handleEvent });
+        } else {
+          await api.chat.start(params.content, { onEvent: handleEvent });
+        }
 
         if (conversationId) {
-          qc.invalidateQueries({ queryKey: ["conversations", conversationId] });
-          qc.invalidateQueries({ queryKey: ["conversations"] });
+          await Promise.all([
+            qc.invalidateQueries({ queryKey: ["conversations"] }),
+            qc.invalidateQueries({ queryKey: ["conversations", conversationId] }),
+          ]);
+        } else {
+          await qc.invalidateQueries({ queryKey: ["conversations"] });
         }
 
-        return { conversationId, agentId, fullContent };
+        if (streamError) {
+          setErrorMessage(streamError);
+        }
+
+        return {
+          conversationId,
+          agentId,
+          fullContent,
+          error: streamError,
+        };
       } catch (error) {
+        if (conversationQueryKey) {
+          qc.setQueryData(conversationQueryKey, previousConversation);
+        }
+
+        const message = error instanceof Error ? error.message : "Unknown error";
+        setErrorMessage(message);
+        return null;
+      } finally {
         setIsStreaming(false);
         setStreamingContent("");
-        throw error;
+        setStreamPhase("idle");
+        setStreamAgentId(undefined);
       }
     },
     [qc],
   );
 
-  return { send, streamingContent, isStreaming };
+  const clearError = useCallback(() => {
+    setErrorMessage(null);
+  }, []);
+
+  return { send, streamingContent, isStreaming, errorMessage, clearError, streamPhase, streamAgentId };
 }

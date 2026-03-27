@@ -126,6 +126,7 @@ class PiSessionHandle implements AgentSessionHandle {
     let resolveNext: ((event: AgentStreamEvent | null) => void) | null = null;
     const queue: (AgentStreamEvent | null)[] = [];
     let done = false;
+    let failed = false;
 
     const unsubscribe = this.session.subscribe((event: AgentSessionEvent) => {
       if (event.type === "message_update") {
@@ -154,6 +155,7 @@ class PiSessionHandle implements AgentSessionHandle {
     }
 
     const promptPromise = this.session.prompt(message).catch((err) => {
+      failed = true;
       push({ type: "error", error: err instanceof Error ? err.message : String(err) });
       push(null);
     });
@@ -166,7 +168,9 @@ class PiSessionHandle implements AgentSessionHandle {
 
         if (event === null) {
           done = true;
-          yield { type: "done", fullContent };
+          if (!failed) {
+            yield { type: "done", fullContent };
+          }
         } else {
           yield event;
         }

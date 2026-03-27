@@ -151,7 +151,7 @@ export async function createHandlers(workspacePath: string) {
     removeConnector: new RemoveConnectorCommandHandler(connectorsRepo),
     // Chat
     getConversations: new GetConversationsQueryHandler(conversationsRepo),
-    getConversation: new GetConversationQueryHandler(conversationsRepo, agentRuntime),
+    getConversation: new GetConversationQueryHandler(conversationsRepo),
     sendMessage: new SendMessageCommandHandler(conversationsRepo, agentsRepo, skillsRepo, agentRuntime),
     startConversation: new StartConversationCommandHandler(conversationsRepo, agentsRepo, skillsRepo, agentRuntime),
     // Workspace info

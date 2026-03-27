@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
 import { MessageSquareIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useConversation, useSendMessage } from "@/hooks/use-chat";
 import { useAgents } from "@/hooks/use-agents";
 import { ChatConversationList } from "./chat-conversation-list";
@@ -12,47 +13,48 @@ export function ChatPage() {
   const navigate = useNavigate();
   const { data: conversation } = useConversation(conversationId);
   const { data: agents } = useAgents();
-  const { send, streamingContent, isStreaming } = useSendMessage();
+  const { send, streamingContent, isStreaming, errorMessage, streamPhase, streamAgentId } =
+    useSendMessage();
 
   const agentName = conversation?.agentId
     ? agents?.find((a) => a.id === conversation.agentId)?.name
     : undefined;
+  const streamingAgentName = streamAgentId
+    ? agents?.find((a) => a.id === streamAgentId)?.name
+    : agentName;
+  const loadingLabel =
+    streamPhase === "starting"
+      ? "Starting the conversation..."
+      : streamPhase === "thinking"
+        ? "Analyzing the request and preparing a response..."
+        : undefined;
 
   const handleSend = useCallback(
     async (content: string) => {
-      const result = await send({ conversationId, content });
-      if (result?.conversationId && !conversationId) {
-        navigate(`/chat/${result.conversationId}`);
-      }
+      await send({
+        conversationId,
+        content,
+        onConversationCreated: (createdConversationId) => {
+          navigate(`/chat/${createdConversationId}`);
+        },
+      });
     },
-    [conversationId, send, navigate],
+    [conversationId, navigate, send],
   );
-
 
   return (
     <div className="flex h-full">
-      {/* Conversation list */}
       <div className="w-64 shrink-0">
-        <ChatConversationList
-          activeId={conversationId}
-          onNewChat={() => navigate("/chat")}
-        />
+        <ChatConversationList activeId={conversationId} onNewChat={() => navigate("/chat")} />
       </div>
 
-      {/* Message area */}
       <div className="relative flex flex-1 flex-col" style={{ height: "100vh" }}>
-        {/* Header — fixed top */}
         <div className="shrink-0 flex items-center gap-2 border-b px-4 py-3">
           <MessageSquareIcon className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium">
-            {conversation?.title || "New conversation"}
-          </span>
-          {agentName && (
-            <span className="text-xs text-muted-foreground">with {agentName}</span>
-          )}
+          <span className="text-sm font-medium">{conversation?.title || "New conversation"}</span>
+          {agentName && <span className="text-xs text-muted-foreground">with {agentName}</span>}
         </div>
 
-        {/* Messages — scrollable middle */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-4">
             {!conversationId && !isStreaming && (
@@ -72,25 +74,30 @@ export function ChatPage() {
               />
             ))}
 
-            {isStreaming && streamingContent && (
+            {isStreaming && (
               <ChatMessage
                 role="assistant"
                 content={streamingContent}
-                agentName={agentName}
+                agentName={streamingAgentName}
                 isStreaming
+                loadingLabel={loadingLabel}
               />
             )}
-
           </div>
         </div>
 
-        {/* Input — fixed bottom */}
+        {errorMessage && (
+          <div className="shrink-0 px-4 pb-2">
+            <Alert variant="destructive">
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+
         <ChatInput
           onSend={handleSend}
           disabled={isStreaming}
-          placeholder={
-            conversationId ? "Type a message..." : "@agent start a conversation..."
-          }
+          placeholder={conversationId ? "Type a message..." : "@agent start a conversation..."}
         />
       </div>
     </div>

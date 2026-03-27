@@ -40,10 +40,12 @@ interface ChatMessageProps {
   content: string;
   agentName?: string;
   isStreaming?: boolean;
+  loadingLabel?: string;
 }
 
-export function ChatMessage({ role, content, agentName, isStreaming }: ChatMessageProps) {
+export function ChatMessage({ role, content, agentName, isStreaming, loadingLabel }: ChatMessageProps) {
   const isUser = role === "user";
+  const showLoadingState = !isUser && !!loadingLabel && content.length === 0;
 
   return (
     <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -67,6 +69,21 @@ export function ChatMessage({ role, content, agentName, isStreaming }: ChatMessa
         >
           {isUser ? (
             <p className="whitespace-pre-wrap">{content}</p>
+          ) : showLoadingState ? (
+            <div className="space-y-2 text-muted-foreground">
+              <p className="text-sm">{loadingLabel}</p>
+              <div className="flex items-center gap-1" aria-hidden="true">
+                <span className="size-2 rounded-full bg-current opacity-40 animate-pulse" />
+                <span
+                  className="size-2 rounded-full bg-current opacity-40 animate-pulse"
+                  style={{ animationDelay: "150ms" }}
+                />
+                <span
+                  className="size-2 rounded-full bg-current opacity-40 animate-pulse"
+                  style={{ animationDelay: "300ms" }}
+                />
+              </div>
+            </div>
           ) : (
             <Streamdown plugins={plugins} components={components} isAnimating={isStreaming}>
               {content}

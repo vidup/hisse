@@ -3,6 +3,7 @@ import type { SkillsRepository } from "../../domain/ports/skills.repository.js";
 import type { ConversationsRepository } from "../../domain/ports/conversations.repository.js";
 import type { AgentRuntime, AgentStreamEvent } from "../../domain/ports/agent-runtime.js";
 import { parseMentions, parseSkillInvocations } from "../../domain/services/parse-input.js";
+import { persistConversationStream } from "./persist-conversation-stream.js";
 
 export class SendMessageCommand {
   constructor(
@@ -51,11 +52,18 @@ export class SendMessageCommandHandler {
       }
     }
 
-    const session = await this.agentRuntime.resumeSession(conversation.id);
-    const stream = session.prompt(command.content);
-
-    conversation.touch();
+    conversation.addUserMessage(command.content);
     await this.conversationsRepo.save(conversation);
+
+    const session = await this.agentRuntime.resumeSession(conversation.id);
+
+    const promptContent = skillContext ? `${command.content}\n\n${skillContext}` : command.content;
+    const source = session.prompt(promptContent);
+    const stream = persistConversationStream({
+      conversation,
+      source,
+      conversationsRepo: this.conversationsRepo,
+    });
 
     return { stream, agentId: conversation.agentId, conversationId: conversation.id };
   }

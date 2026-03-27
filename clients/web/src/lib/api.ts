@@ -182,16 +182,6 @@ export interface ConnectorSummary {
   updatedAt: string;
 }
 
-async function fetchSSE(path: string, body: unknown): Promise<Response> {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...workspaceHeaders() },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-  return res;
-}
-
 // Chat types
 export interface ConversationSummary {
   id: string;
@@ -209,6 +199,62 @@ export interface AgentMessageSummary {
 
 export interface ConversationDetail extends ConversationSummary {
   messages: AgentMessageSummary[];
+}
+
+export type ChatStreamEvent =
+  | { type: "meta"; conversationId: string; agentId: string }
+  | { type: "delta"; content: string }
+  | { type: "done"; conversationId: string; agentId: string; fullContent: string }
+  | { type: "error"; conversationId: string; agentId: string; error: string };
+
+interface ChatStreamOptions {
+  onEvent: (event: ChatStreamEvent) => void;
+  signal?: AbortSignal;
+}
+
+async function streamChat(path: string, body: unknown, options: ChatStreamOptions): Promise<void> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...workspaceHeaders() },
+    body: JSON.stringify(body),
+    signal: options.signal,
+  });
+
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    throw new Error("No response body");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex = buffer.indexOf("\n");
+    while (newlineIndex !== -1) {
+      const line = buffer.slice(0, newlineIndex).trim();
+      buffer = buffer.slice(newlineIndex + 1);
+
+      if (line) {
+        options.onEvent(JSON.parse(line) as ChatStreamEvent);
+      }
+
+      newlineIndex = buffer.indexOf("\n");
+    }
+  }
+
+  const trailingLine = buffer.trim();
+  if (trailingLine) {
+    options.onEvent(JSON.parse(trailingLine) as ChatStreamEvent);
+  }
 }
 
 const w = DEFAULT_WORKSPACE_ID;
@@ -309,8 +355,9 @@ export const api = {
   chat: {
     list: () => get<ConversationSummary[]>("/api/conversations"),
     getById: (id: string) => get<ConversationDetail>(`/api/conversations/${id}`),
-    start: (content: string) => fetchSSE("/api/conversations", { content }),
-    sendMessage: (id: string, content: string) =>
-      fetchSSE(`/api/conversations/${id}/messages`, { content }),
+    start: (content: string, options: ChatStreamOptions) =>
+      streamChat("/api/conversations", { content }, options),
+    sendMessage: (id: string, content: string, options: ChatStreamOptions) =>
+      streamChat(`/api/conversations/${id}/messages`, { content }, options),
   },
 };
