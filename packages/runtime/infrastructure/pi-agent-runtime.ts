@@ -1,4 +1,4 @@
-import path from "node:path";
+﻿import path from "node:path";
 import {
   createAgentSession,
   AuthStorage,
@@ -15,6 +15,7 @@ import type {
   AgentStreamEvent,
   AgentMessage,
 } from "../domain/ports/agent-runtime.js";
+import { createPiSystemTools } from "./pi-system-tools.js";
 
 export interface CredentialEntry {
   provider: string;
@@ -30,6 +31,7 @@ export class PiAgentRuntime implements AgentRuntime {
 
   constructor(
     private readonly loadCredentials: () => Promise<CredentialEntry[]>,
+    private readonly workspaceRoot: string,
     private readonly conversationsDir: string,
   ) { }
 
@@ -70,11 +72,12 @@ export class PiAgentRuntime implements AgentRuntime {
       );
     }
 
-    // Each conversation gets its own cwd — pi persists session JSONL there
-    const cwd = this.sessionDir(params.sessionId);
-    console.log(`[pi] Creating session in ${cwd}`);
+    // The agent works from the workspace root while Pi persists session JSONL per conversation.
+    const cwd = this.workspaceRoot;
+    const sessionDir = this.sessionDir(params.sessionId);
+    console.log(`[pi] Creating session for workspace ${cwd} with session dir ${sessionDir}`);
 
-    const sessionManager = SessionManager.create(cwd, cwd);
+    const sessionManager = SessionManager.create(cwd, sessionDir);
 
     const { session } = await createAgentSession({
       cwd,
@@ -83,6 +86,7 @@ export class PiAgentRuntime implements AgentRuntime {
       sessionManager,
       model,
       tools: [],
+      customTools: createPiSystemTools(cwd),
     });
 
     const handle = new PiSessionHandle(session, params.systemPrompt);
@@ -95,12 +99,12 @@ export class PiAgentRuntime implements AgentRuntime {
     const cached = this.sessions.get(sessionId);
     if (cached) return cached;
 
-    // Rebuild session from persisted JSONL in the conversation directory
     const { authStorage, modelRegistry } = await this.buildAuthAndRegistry();
-    const cwd = this.sessionDir(sessionId);
-    console.log(`[pi] Resuming session in ${cwd}`);
+    const cwd = this.workspaceRoot;
+    const sessionDir = this.sessionDir(sessionId);
+    console.log(`[pi] Resuming session for workspace ${cwd} with session dir ${sessionDir}`);
 
-    const sessionManager = SessionManager.continueRecent(cwd, cwd);
+    const sessionManager = SessionManager.continueRecent(cwd, sessionDir);
 
     const { session } = await createAgentSession({
       cwd,
@@ -108,6 +112,7 @@ export class PiAgentRuntime implements AgentRuntime {
       modelRegistry,
       sessionManager,
       tools: [],
+      customTools: createPiSystemTools(cwd),
     });
     const handle = new PiSessionHandle(session, "");
     this.sessions.set(sessionId, handle);
@@ -198,3 +203,4 @@ class PiSessionHandle implements AgentSessionHandle {
 
   destroy(): void { }
 }
+

@@ -108,7 +108,7 @@ export async function createHandlers(workspacePath: string) {
       expiresAt: c.method === "oauth" ? c.expiresAt : undefined,
     }));
   };
-  const agentRuntime = new PiAgentRuntime(loadCredentials, ws.conversations);
+  const agentRuntime = new PiAgentRuntime(loadCredentials, ws.root, ws.conversations);
 
   return {
     // Skills
