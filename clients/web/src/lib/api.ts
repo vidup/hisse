@@ -182,6 +182,11 @@ export interface ConnectorSummary {
   updatedAt: string;
 }
 
+export interface WorkspaceChatSettingsSummary {
+  workspaceId: string;
+  defaultChatAgentId: string | null;
+}
+
 export interface WorkspaceImportAgentPreview {
   id: string;
   name: string;
@@ -418,6 +423,11 @@ export const api = {
     remove: (provider: string) =>
       del<{ ok: boolean }>(`/api/workspaces/${w}/connectors/${encodeURIComponent(provider)}`),
   },
+  workspaceSettings: {
+    getChat: () => get<WorkspaceChatSettingsSummary>(`/api/workspaces/${w}/settings/chat`),
+    updateChat: (body: { defaultChatAgentId: string | null }) =>
+      put<{ ok: boolean }>(`/api/workspaces/${w}/settings/chat`, body),
+  },
   workspaceImport: {
     preview: (sourceWorkspacePath: string) =>
       post<WorkspaceImportPreview>("/api/workspace-import/preview", { sourceWorkspacePath }),
@@ -427,8 +437,8 @@ export const api = {
   chat: {
     list: () => get<ConversationSummary[]>("/api/conversations"),
     getById: (id: string) => get<ConversationDetail>(`/api/conversations/${id}`),
-    start: (content: string, options: ChatStreamOptions) =>
-      streamChat("/api/conversations", { content }, options),
+    start: (body: { content: string; launchAgentId?: string }, options: ChatStreamOptions) =>
+      streamChat("/api/conversations", body, options),
     sendMessage: (id: string, content: string, options: ChatStreamOptions) =>
       streamChat(`/api/conversations/${id}/messages`, { content }, options),
   },

@@ -14,6 +14,12 @@ export interface AgentMessage {
   timestamp: Date;
 }
 
+export interface AgentSkillAccess {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface AgentSessionHandle {
   prompt(message: string): AsyncIterable<AgentStreamEvent>;
   getMessages(): Promise<AgentMessage[]>;
@@ -26,7 +32,11 @@ export interface AgentRuntime {
     systemPrompt: string;
     provider: string;
     model: string;
+    availableSkills: AgentSkillAccess[];
   }): Promise<AgentSessionHandle>;
 
-  resumeSession(sessionId: string): Promise<AgentSessionHandle>;
+  resumeSession(params: {
+    sessionId: string;
+    availableSkills: AgentSkillAccess[];
+  }): Promise<AgentSessionHandle>;
 }

@@ -14,6 +14,7 @@ import type {
   AgentSessionHandle,
   AgentStreamEvent,
   AgentMessage,
+  AgentSkillAccess,
 } from "../domain/ports/agent-runtime.js";
 import type { ConversationActivity } from "../domain/model/message.js";
 import { createPiSystemTools } from "./pi-system-tools.js";
@@ -46,6 +47,12 @@ function summarizeToolLabel(toolName: string, args: Record<string, unknown> | un
       return pattern ? `Find ${pattern}${path ? ` in ${path}` : ""}` : `Find in ${path ?? "."}`;
     case "grep":
       return pattern ? `Search ${JSON.stringify(pattern)}${path ? ` in ${path}` : ""}` : `Search ${path ?? "."}`;
+    case "ListAgentSkills":
+      return "List linked agent skills";
+    case "ReadAgentSkill":
+      return `Read skill ${typeof args?.name === "string" ? args.name : ""}`.trim();
+    case "ReadAgentSkillFile":
+      return `Read skill file ${typeof args?.path === "string" ? args.path : ""}`.trim();
     default:
       return toolName;
   }
@@ -58,6 +65,7 @@ export class PiAgentRuntime implements AgentRuntime {
     private readonly loadCredentials: () => Promise<CredentialEntry[]>,
     private readonly workspaceRoot: string,
     private readonly conversationsDir: string,
+    private readonly skillsBaseDir: string,
   ) { }
 
   private async buildAuthAndRegistry() {
@@ -86,6 +94,7 @@ export class PiAgentRuntime implements AgentRuntime {
     systemPrompt: string;
     provider: string;
     model: string;
+    availableSkills: AgentSkillAccess[];
   }): Promise<AgentSessionHandle> {
     const { authStorage, modelRegistry } = await this.buildAuthAndRegistry();
     const model = modelRegistry.find(params.provider, params.model);
@@ -111,7 +120,7 @@ export class PiAgentRuntime implements AgentRuntime {
       sessionManager,
       model,
       tools: [],
-      customTools: createPiSystemTools(cwd),
+      customTools: createPiSystemTools(cwd, this.skillsBaseDir, params.availableSkills),
     });
 
     const handle = new PiSessionHandle(session, params.systemPrompt);
@@ -119,14 +128,17 @@ export class PiAgentRuntime implements AgentRuntime {
     return handle;
   }
 
-  async resumeSession(sessionId: string): Promise<AgentSessionHandle> {
+  async resumeSession(params: {
+    sessionId: string;
+    availableSkills: AgentSkillAccess[];
+  }): Promise<AgentSessionHandle> {
     // Check in-memory cache first
-    const cached = this.sessions.get(sessionId);
+    const cached = this.sessions.get(params.sessionId);
     if (cached) return cached;
 
     const { authStorage, modelRegistry } = await this.buildAuthAndRegistry();
     const cwd = this.workspaceRoot;
-    const sessionDir = this.sessionDir(sessionId);
+    const sessionDir = this.sessionDir(params.sessionId);
     console.log(`[pi] Resuming session for workspace ${cwd} with session dir ${sessionDir}`);
 
     const sessionManager = SessionManager.continueRecent(cwd, sessionDir);
@@ -137,10 +149,10 @@ export class PiAgentRuntime implements AgentRuntime {
       modelRegistry,
       sessionManager,
       tools: [],
-      customTools: createPiSystemTools(cwd),
+      customTools: createPiSystemTools(cwd, this.skillsBaseDir, params.availableSkills),
     });
     const handle = new PiSessionHandle(session, "");
-    this.sessions.set(sessionId, handle);
+    this.sessions.set(params.sessionId, handle);
     return handle;
   }
 }

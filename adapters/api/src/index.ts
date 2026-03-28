@@ -11,6 +11,7 @@ import { registerToolsRoutes } from "./routes/tools.routes.js";
 import { registerConnectorsRoutes } from "./routes/connectors.routes.js";
 import { registerChatRoutes } from "./routes/chat.routes.js";
 import { registerWorkspaceImportRoutes } from "./routes/workspace-import.routes.js";
+import { registerWorkspaceSettingsRoutes } from "./routes/workspace-settings.routes.js";
 
 const app = Fastify({ logger: true });
 
@@ -41,6 +42,7 @@ registerToolsRoutes(app);
 registerConnectorsRoutes(app);
 registerChatRoutes(app);
 registerWorkspaceImportRoutes(app);
+registerWorkspaceSettingsRoutes(app);
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 const host = process.env.HOST ?? "0.0.0.0";

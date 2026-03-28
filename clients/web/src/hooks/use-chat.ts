@@ -17,6 +17,7 @@ export function useConversation(id: string | undefined) {
 interface SendMessageParams {
   conversationId?: string;
   content: string;
+  launchAgentId?: string;
   onConversationCreated?: (conversationId: string) => void;
 }
 
@@ -140,7 +141,10 @@ export function useSendMessage() {
         if (params.conversationId) {
           await api.chat.sendMessage(params.conversationId, params.content, { onEvent: handleEvent });
         } else {
-          await api.chat.start(params.content, { onEvent: handleEvent });
+          await api.chat.start(
+            { content: params.content, launchAgentId: params.launchAgentId },
+            { onEvent: handleEvent },
+          );
         }
 
         if (conversationId) {

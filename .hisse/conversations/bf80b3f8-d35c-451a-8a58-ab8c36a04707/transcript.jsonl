@@ -1,0 +1,2 @@
+{"id":"cc738343-adb7-4483-b5b9-f29fbb0212b9","conversationId":"bf80b3f8-d35c-451a-8a58-ab8c36a04707","kind":"user_turn","sequence":1,"text":"Hello !","createdAt":"2026-03-28T13:03:49.852Z","completedAt":"2026-03-28T13:03:49.852Z"}
+{"id":"8003f582-18d6-4baf-81ec-db968138664e","conversationId":"bf80b3f8-d35c-451a-8a58-ab8c36a04707","kind":"assistant_turn","sequence":2,"text":"Hello! How can I help?","status":"completed","createdAt":"2026-03-28T13:03:51.886Z","completedAt":"2026-03-28T13:03:51.886Z","activities":[]}

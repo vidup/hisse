@@ -2,12 +2,14 @@
 export type { HealthPort } from "./domain/ports/health.port.js";
 export type { AgentsRepository } from "./domain/ports/agents.repository.js";
 export type { SkillsRepository } from "./domain/ports/skills.repository.js";
+export type { WorkspaceChatSettingsRepository } from "./domain/ports/workspace-chat-settings.repository.js";
 
 // Domain — Models
 export type { AgentId } from "./domain/model/agent.js";
 export { Agent } from "./domain/model/agent.js";
 export type { SkillId } from "./domain/model/skill.js";
 export { Skill } from "./domain/model/skill.js";
+export { WorkspaceChatSettings } from "./domain/model/workspace-chat-settings.js";
 export type {
   AssistantTurnEntry,
   AssistantTurnStatus,
@@ -31,6 +33,7 @@ export { FsTeamsRepository } from "./infrastructure/fs-teams.repository.js";
 export { FsProjectsRepository } from "./infrastructure/fs-projects.repository.js";
 export { FsTasksRepository } from "./infrastructure/fs-tasks.repository.js";
 export { FsToolsRepository } from "./infrastructure/fs-tools.repository.js";
+export { FsWorkspaceChatSettingsRepository } from "./infrastructure/fs-workspace-chat-settings.repository.js";
 
 // Application — Knowledge (Skills)
 export {
@@ -96,6 +99,16 @@ export { MoveTaskToStepCommand, MoveTaskToStepCommandHandler } from "./applicati
 
 // Application — Tools
 export { GetToolsQuery, GetToolsQueryHandler } from "./application/tools/get-tools.query.js";
+
+// Application - Workspace
+export {
+  GetWorkspaceChatSettingsQuery,
+  GetWorkspaceChatSettingsQueryHandler,
+} from "./application/workspace/get-workspace-chat-settings.query.js";
+export {
+  SetDefaultChatAgentCommand,
+  SetDefaultChatAgentCommandHandler,
+} from "./application/workspace/set-default-chat-agent.command.js";
 
 // Domain — Chat
 export { Conversation, ConversationCreatedEvent } from "./domain/model/conversation.js";

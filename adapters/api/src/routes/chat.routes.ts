@@ -148,13 +148,15 @@ export function registerChatRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post<{ Body: { content: string } }>("/api/conversations", async (request, reply) => {
+  app.post<{ Body: { content: string; launchAgentId?: string } }>("/api/conversations", async (request, reply) => {
     const workspacePath = getWorkspaceFromRequest(request);
     const handlers = await createHandlers(workspacePath);
-    const { content } = request.body;
+    const { content, launchAgentId } = request.body;
 
     try {
-      const result = await handlers.startConversation.execute(new StartConversationCommand(content));
+      const result = await handlers.startConversation.execute(
+        new StartConversationCommand(content, launchAgentId),
+      );
       await pipeChatStream({
         reply,
         conversationId: result.conversationId,

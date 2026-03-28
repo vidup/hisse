@@ -9,6 +9,7 @@ import {
   FsProjectsRepository,
   FsTasksRepository,
   FsToolsRepository,
+  FsWorkspaceChatSettingsRepository,
   FsConversationsRepository,
   PiAgentRuntime,
   // Skills
@@ -47,6 +48,8 @@ import {
   SendMessageCommandHandler,
   GetConversationsQueryHandler,
   GetConversationQueryHandler,
+  GetWorkspaceChatSettingsQueryHandler,
+  SetDefaultChatAgentCommandHandler,
 } from "@hisse/runtime";
 import {
   FsConnectorsRepository,
@@ -78,6 +81,7 @@ export function resolveWorkspace(workspacePath: string) {
     connectors: path.join(base, "connectors"),
     conversations: path.join(base, "conversations"),
     sessions: path.join(base, "sessions"),
+    settings: path.join(base, "workspace-settings.json"),
   };
 }
 
@@ -94,6 +98,7 @@ export async function createHandlers(workspacePath: string) {
   const toolsRepo = new FsToolsRepository(ws.tools);
   const connectorsRepo = new FsConnectorsRepository(ws.connectors);
   const conversationsRepo = new FsConversationsRepository(ws.conversations);
+  const workspaceChatSettingsRepo = new FsWorkspaceChatSettingsRepository(ws.settings);
 
   await skillsRepo.preload();
 
@@ -108,7 +113,7 @@ export async function createHandlers(workspacePath: string) {
       expiresAt: c.method === "oauth" ? c.expiresAt : undefined,
     }));
   };
-  const agentRuntime = new PiAgentRuntime(loadCredentials, ws.root, ws.conversations);
+  const agentRuntime = new PiAgentRuntime(loadCredentials, ws.root, ws.conversations, ws.skills);
 
   return {
     // Skills
@@ -153,7 +158,15 @@ export async function createHandlers(workspacePath: string) {
     getConversations: new GetConversationsQueryHandler(conversationsRepo),
     getConversation: new GetConversationQueryHandler(conversationsRepo),
     sendMessage: new SendMessageCommandHandler(conversationsRepo, agentsRepo, skillsRepo, agentRuntime),
-    startConversation: new StartConversationCommandHandler(conversationsRepo, agentsRepo, skillsRepo, agentRuntime),
+    startConversation: new StartConversationCommandHandler(
+      conversationsRepo,
+      agentsRepo,
+      skillsRepo,
+      agentRuntime,
+      workspaceChatSettingsRepo,
+    ),
+    getWorkspaceChatSettings: new GetWorkspaceChatSettingsQueryHandler(workspaceChatSettingsRepo),
+    setDefaultChatAgent: new SetDefaultChatAgentCommandHandler(workspaceChatSettingsRepo, agentsRepo),
     // Workspace info
     workspacePath,
   };
