@@ -2,7 +2,7 @@
 
 > Plan for evolving Hisse chat from a flat canonical transcript to a richer, domain-owned conversation model.
 > Pi remains the raw execution engine and technical trace.
-> Hisse owns the product model, the product read models, and the persistence boundary.
+> Hisse owns the product model and the product persistence boundary.
 
 ---
 
@@ -41,21 +41,21 @@ The problem is that Hisse currently flattens too much of that data at the produc
 The retained direction is:
 
 - keep `Conversation` as the aggregate root
-- stop treating the canonical model as "just a list of final text messages"
-- introduce a richer product-level conversation model
+- keep the canonical product model simple and product-owned
+- evolve the transcript from "just a list of final text messages" to richer turn entries
 - keep Pi raw session JSONL untouched as the technical source
-- build Hisse-owned canonical events and read models from Pi execution
+- persist only the product-visible information Hisse actually cares about
 
 Important consequence:
 
 - Pi raw JSONL is not the product model
-- Hisse canonical events are not a copy of Pi schema
-- Hisse must project the raw runtime trace into a stable domain language
+- Hisse should not duplicate all of Pi runtime richness
+- Hisse should project the raw runtime trace into a stable domain language only where useful
 
 In short:
 
 - Pi knows how to execute
-- Hisse knows how to represent
+- Hisse knows what matters to the product
 
 ---
 
@@ -88,7 +88,7 @@ It is also semantically wrong for agent runs that span multiple internal turns.
 The next chat model must allow Hisse to:
 
 - show live tool activity while the assistant is working
-- persist a canonical conversation that survives reloads
+- persist a product conversation that survives reloads
 - remain domain-first and runtime-agnostic
 - keep raw Pi traces for audit, repair, and migration
 - support future HITL states without redesigning chat again
@@ -98,7 +98,7 @@ The next chat model must allow Hisse to:
 
 ## Target Layering
 
-We keep three distinct layers.
+We keep two distinct persistence layers.
 
 ### 1. Raw Runtime Trace
 
@@ -122,46 +122,28 @@ Purpose:
 - migration
 - forensic replay
 
-### 2. Canonical Conversation Events
+### 2. Product Conversation Transcript
 
 Owned by Hisse.
 
-This becomes the write-side product truth.
+This becomes the product truth.
 
 Contains:
 
-- user turn start
-- assistant turn start
-- assistant text append
-- activity start
-- activity update
-- activity end
-- assistant turn complete
-- assistant turn fail
-- artifact emitted
-- user input requested
+- ordered `UserTurnEntry`
+- ordered `AssistantTurnEntry`
+- assistant text
+- assistant status
+- assistant error when relevant
+- projected activities the UI/product cares about
+- later, projected artifacts such as HITL requests or proposals
 
 Purpose:
 
 - stable product persistence
 - runtime-independent semantics
-- clean input for read models
-
-### 3. Read Models
-
-Owned by Hisse.
-
-Examples:
-
-- transcript for the chat UI
-- activity timeline attached to an assistant turn
-- future HITL panels
-- future proposal/file preview cards
-
-Purpose:
-
-- render exactly what the product needs
-- avoid querying raw Pi state directly
+- simple reloads without replaying Pi
+- direct input for the chat UI and future product surfaces
 
 ---
 
@@ -174,7 +156,7 @@ The intended direction is:
 - `Conversation` stays the aggregate root
 - a conversation contains ordered `ConversationEntry`
 - a `ConversationEntry` is either:
-  - a `UserMessageEntry`
+  - a `UserTurnEntry`
   - an `AssistantTurnEntry`
 
 `AssistantTurnEntry` is the key new concept.
@@ -231,54 +213,21 @@ Later examples:
 
 ---
 
-## Canonical Event Log
-
-The canonical write model should move to an append-only event log.
-
-Suggested event families:
-
-- `conversation_created`
-- `user_message_added`
-- `assistant_turn_started`
-- `assistant_text_appended`
-- `activity_started`
-- `activity_updated`
-- `activity_completed`
-- `artifact_emitted`
-- `assistant_turn_completed`
-- `assistant_turn_failed`
-
-These are Hisse events, not Pi events.
-
-They should be:
-
-- stable
-- product-readable
-- runtime-agnostic
-- compact enough to persist safely
-
-Important rule:
-
-- do not persist raw `write/edit` file contents in canonical events
-- persist summaries, paths, counts, and safe metadata only
-
----
-
 ## Mapping From Pi To Hisse
 
-Pi already gives enough signal to build the canonical Hisse event stream.
+Pi already gives enough signal to build the Hisse product transcript projection.
 
 ### From Pi message events
 
-- assistant text delta -> `assistant_text_appended`
-- final agent completion -> `assistant_turn_completed`
-- execution error -> `assistant_turn_failed`
+- assistant text delta -> append text to the in-flight `AssistantTurnEntry`
+- final agent completion -> persist a completed `AssistantTurnEntry`
+- execution error -> persist a failed `AssistantTurnEntry`
 
 ### From Pi tool lifecycle events
 
-- `tool_execution_start` -> `activity_started`
-- `tool_execution_update` -> `activity_updated`
-- `tool_execution_end` -> `activity_completed`
+- `tool_execution_start` -> add or start a projected activity
+- `tool_execution_update` -> update the projected activity if useful
+- `tool_execution_end` -> mark the projected activity completed or failed
 
 ### From raw Pi message content
 
@@ -292,14 +241,12 @@ The product must not depend on replaying raw Pi schema at read time.
 But raw Pi data can be used:
 
 - when projecting in real time
-- when rebuilding old conversations
-- when repairing corrupted projections
+- when rebuilding old conversations if we ever want to
+- when repairing corrupted product transcripts
 
 ---
 
 ## Persistence Layout
-
-Current layout is too centered on `transcript.jsonl`.
 
 Target layout:
 
@@ -308,7 +255,6 @@ Target layout:
   conversations/
     <conversationId>/
       conversation.json
-      events.jsonl
       transcript.jsonl
       <pi-session>.jsonl
 ```
@@ -317,18 +263,16 @@ Meaning:
 
 - `conversation.json`
   - metadata
-- `events.jsonl`
-  - canonical Hisse event log
 - `transcript.jsonl`
-  - read-optimized projection for simple transcript reads
+  - Hisse product transcript
 - `<pi-session>.jsonl`
   - raw Pi technical session log
 
 Notes:
 
-- `events.jsonl` becomes the write-side truth
-- `transcript.jsonl` becomes a projection, not the primary source
-- Pi raw JSONL remains available exactly because it is richer than the transcript
+- `transcript.jsonl` is the Hisse canonical product persistence for now
+- Pi raw JSONL remains available because it is richer than the transcript
+- Hisse stores only product-useful projections, not the full Pi runtime story
 
 ---
 
@@ -356,6 +300,12 @@ Target direction:
 
 The UI should not infer tool activity from raw markdown.
 It should receive explicit activity events.
+
+Important distinction:
+
+- the stream can be more granular than the persisted transcript
+- Hisse does not need to persist every streaming event as a first-class canonical record
+- it only needs to persist the final product turn with the useful projected activity summary
 
 ---
 
@@ -393,7 +343,7 @@ It does not need to preserve the current local conversation history if we decide
 
 - do not delete or mutate raw Pi session files created by the new system
 - keep the runtime boundary compatible with Pi
-- keep the canonical model independent from Pi internal schema
+- keep the product model independent from Pi internal schema
 - prefer a clean storage reset over a migration if that reduces complexity
 
 ### Reset Strategy
@@ -401,7 +351,7 @@ It does not need to preserve the current local conversation history if we decide
 If we choose to restart from zero:
 
 1. delete existing conversation directories
-2. deploy the richer canonical model directly
+2. deploy the richer transcript model directly
 3. generate only the new storage layout for all new conversations
 
 This is the preferred rollout if we want to move fast and avoid migration code.
@@ -411,9 +361,9 @@ This is the preferred rollout if we want to move fast and avoid migration code.
 If we later decide to recover old conversations:
 
 1. load raw Pi session JSONL if present
-2. project it into canonical Hisse events
+2. project it into Hisse turn entries
 3. rebuild `transcript.jsonl`
-4. optionally persist the rebuilt canonical files
+4. optionally persist the rebuilt transcript
 
 This remains possible because the raw Pi session is richer than the flat transcript.
 
@@ -455,46 +405,31 @@ Deliverable:
 
 - the backend can observe what the assistant is doing in real time
 
-### Phase 2 - Introduce Canonical Event Log
+### Phase 2 - Enrich Transcript Persistence
 
 Goal:
 
-- stop using `transcript.jsonl` as the only canonical write model
+- persist richer assistant turns directly in the product transcript
 
 Work:
 
-- add `events.jsonl`
-- define the Hisse canonical chat events
-- append canonical events during execution
-
-Deliverable:
-
-- a domain-owned, replayable product event log
-
-### Phase 3 - Build Transcript Projection
-
-Goal:
-
-- preserve simple reads while moving to richer writes
-
-Work:
-
-- build `transcript.jsonl` as a projection from canonical events
+- persist `AssistantTurnEntry` with status and activities
 - keep current chat list and transcript read APIs working
+- keep the format simple and readable
 
 Deliverable:
 
-- backward-compatible transcript reads
+- a product transcript that survives reloads without replaying Pi
 
-### Phase 4 - Add Assistant Activity Projection
+### Phase 3 - Add Assistant Activity Projection
 
 Goal:
 
-- expose tool activity as product data
+- expose tool activity as product data inside assistant turns
 
 Work:
 
-- project canonical events into assistant turn activities
+- project runtime events into assistant turn activities
 - expose them in `GetConversation`
 - expose them in the NDJSON stream
 
@@ -502,7 +437,7 @@ Deliverable:
 
 - the frontend can render "read", "find", "write", "ask user", etc.
 
-### Phase 5 - Frontend Activity UI
+### Phase 4 - Frontend Activity UI
 
 Goal:
 
@@ -518,7 +453,7 @@ Deliverable:
 
 - live, trustworthy execution feedback in chat
 
-### Phase 6 - Prepare HITL And Artifacts
+### Phase 5 - Prepare HITL And Artifacts
 
 Goal:
 
@@ -543,7 +478,7 @@ What we should do now:
 
 1. fix request completion semantics for tool-based runs
 2. extend the runtime stream with activity events
-3. persist a canonical event log
+3. persist richer assistant turns in `transcript.jsonl`
 4. project a minimal assistant activity timeline
 5. render that timeline in the chat UI
 
@@ -553,7 +488,7 @@ What we should not do in the first slice:
 - rich artifact rendering
 - migration of old conversations
 - editing Pi raw session files
-- persisting raw tool payloads verbatim in the canonical model
+- persisting raw tool payloads verbatim in the product model
 
 ---
 
@@ -564,7 +499,7 @@ This plan is considered implemented when all of the following are true:
 - a tool-using assistant run persists the real final answer
 - the user can see live tool activity in the chat UI
 - the conversation can be reloaded without reading Pi state directly
-- Hisse owns a canonical event log richer than flat transcript lines
+- Hisse owns a richer transcript model than flat transcript lines
 - raw Pi JSONL remains available for audit and repair
 
 ---
@@ -587,5 +522,5 @@ This keeps the right boundary:
 And it gives us a path that cleanly supports:
 
 - visible tool activity now
-- canonical replay next
+- richer transcript persistence now
 - HITL and rich artifacts after that
