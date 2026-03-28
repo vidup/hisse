@@ -182,6 +182,40 @@ export interface ConnectorSummary {
   updatedAt: string;
 }
 
+export interface WorkspaceImportAgentPreview {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  model: string;
+  skillIds: string[];
+  toolNames: string[];
+}
+
+export interface WorkspaceImportSkillPreview {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface WorkspaceImportToolPreview {
+  name: string;
+}
+
+export interface WorkspaceImportPreview {
+  sourceWorkspacePath: string;
+  agents: WorkspaceImportAgentPreview[];
+  skills: WorkspaceImportSkillPreview[];
+  tools: WorkspaceImportToolPreview[];
+}
+
+export interface WorkspaceImportResult {
+  ok: boolean;
+  importedAgents: number;
+  importedSkills: number;
+  importedTools: number;
+}
+
 // Chat types
 export interface ConversationSummary {
   id: string;
@@ -377,6 +411,12 @@ export const api = {
     }) => post<{ ok: boolean }>(`/api/workspaces/${w}/connectors/oauth`, body),
     remove: (provider: string) =>
       del<{ ok: boolean }>(`/api/workspaces/${w}/connectors/${encodeURIComponent(provider)}`),
+  },
+  workspaceImport: {
+    preview: (sourceWorkspacePath: string) =>
+      post<WorkspaceImportPreview>("/api/workspace-import/preview", { sourceWorkspacePath }),
+    import: (body: { sourceWorkspacePath: string; agentIds: string[]; skillIds: string[]; toolNames: string[] }) =>
+      post<WorkspaceImportResult>("/api/workspace-import", body),
   },
   chat: {
     list: () => get<ConversationSummary[]>("/api/conversations"),

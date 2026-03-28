@@ -29,6 +29,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
+import { WorkspaceSwitcher } from "./workspace-switcher";
+
 const navItems = [
   { to: "/skills", label: "Skills", icon: BookOpenIcon },
   { to: "/tools", label: "Tools", icon: WrenchIcon },
@@ -63,10 +65,11 @@ export function AppSidebar() {
             </span>
           </div>
         </div>
+        <WorkspaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (

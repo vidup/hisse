@@ -20,5 +20,6 @@ export class CreateSkillCommandHandler {
     });
 
     await this.skillRepository.save(skill);
+    return skill.id;
   }
 }

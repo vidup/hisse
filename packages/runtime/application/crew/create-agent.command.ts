@@ -31,5 +31,6 @@ export class CreateAgentCommandHandler {
       skills: command.skills,
     });
     await this.agentRepository.save(agent);
+    return agent.id;
   }
 }
