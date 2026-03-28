@@ -243,6 +243,7 @@ export interface ConversationEntrySummary {
   error?: string;
   timestamp: string;
   activities: AgentMessageActivitySummary[];
+  plan?: ConversationPlanSummary;
 }
 
 export interface AgentMessageActivitySummary {
@@ -253,6 +254,17 @@ export interface AgentMessageActivitySummary {
   status: "running" | "completed" | "failed";
   startedAt: string;
   completedAt?: string;
+}
+
+export interface ConversationPlanStepSummary {
+  id: string;
+  label: string;
+  status: "pending" | "in_progress" | "completed";
+}
+
+export interface ConversationPlanSummary {
+  steps: ConversationPlanStepSummary[];
+  updatedAt: string;
 }
 
 export interface ConversationDetail extends ConversationSummary {
@@ -275,6 +287,7 @@ export type ChatStreamEvent =
   | { type: "activity_start"; activity: ChatStreamActivity }
   | { type: "activity_update"; activity: ChatStreamActivity }
   | { type: "activity_end"; activity: ChatStreamActivity }
+  | { type: "plan_update"; plan: ConversationPlanSummary }
   | { type: "done"; conversationId: string; agentId: string; fullContent: string }
   | { type: "error"; conversationId: string; agentId: string; error: string };
 

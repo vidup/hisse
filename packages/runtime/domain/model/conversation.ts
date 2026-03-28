@@ -4,6 +4,7 @@ import {
   createUserTurnEntry,
   type AssistantTurnEntry,
   type ConversationActivity,
+  type ConversationPlan,
   type ConversationEntry,
   type UserTurnEntry,
 } from "./message.js";
@@ -50,13 +51,18 @@ export class Conversation {
     return entry;
   }
 
-  addCompletedAssistantTurn(text: string, activities: ConversationActivity[] = []): AssistantTurnEntry {
+  addCompletedAssistantTurn(
+    text: string,
+    activities: ConversationActivity[] = [],
+    plan?: ConversationPlan,
+  ): AssistantTurnEntry {
     const entry = createAssistantTurnEntry({
       conversationId: this.id,
       sequence: this.nextSequence(),
       text,
       status: "completed",
       activities,
+      plan,
     });
     this._entries.push(entry);
     this.touch();
@@ -67,6 +73,7 @@ export class Conversation {
     text: string,
     error: string,
     activities: ConversationActivity[] = [],
+    plan?: ConversationPlan,
   ): AssistantTurnEntry {
     const entry = createAssistantTurnEntry({
       conversationId: this.id,
@@ -75,6 +82,7 @@ export class Conversation {
       status: "failed",
       error,
       activities,
+      plan,
     });
     this._entries.push(entry);
     this.touch();

@@ -36,6 +36,16 @@ export class GetConversationQueryHandler {
               completedAt: activity.completedAt?.toISOString(),
             }))
           : [],
+        plan: entry.kind === "assistant_turn" && entry.plan
+          ? {
+              steps: entry.plan.steps.map((step) => ({
+                id: step.id,
+                label: step.label,
+                status: step.status,
+              })),
+              updatedAt: entry.plan.updatedAt.toISOString(),
+            }
+          : undefined,
       })),
     };
   }

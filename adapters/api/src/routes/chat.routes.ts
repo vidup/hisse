@@ -22,6 +22,17 @@ type ChatStreamChunk =
         completedAt?: string;
       };
     }
+  | {
+      type: "plan_update";
+      plan: {
+        steps: Array<{
+          id: string;
+          label: string;
+          status: "pending" | "in_progress" | "completed";
+        }>;
+        updatedAt: string;
+      };
+    }
   | { type: "done"; conversationId: string; agentId: string; fullContent: string }
   | { type: "error"; conversationId: string; agentId: string; error: string };
 
@@ -58,6 +69,17 @@ async function pipeChatStream(params: {
           completedAt?: Date;
         };
       }
+    | {
+        type: "plan_update";
+        plan: {
+          steps: Array<{
+            id: string;
+            label: string;
+            status: "pending" | "in_progress" | "completed";
+          }>;
+          updatedAt: Date;
+        };
+      }
     | { type: "done"; fullContent: string }
     | { type: "error"; error: string }
   >;
@@ -83,6 +105,21 @@ async function pipeChatStream(params: {
             ...event.activity,
             startedAt: event.activity.startedAt.toISOString(),
             completedAt: event.activity.completedAt?.toISOString(),
+          },
+        });
+        continue;
+      }
+
+      if (event.type === "plan_update") {
+        writeStreamChunk(params.reply, {
+          type: "plan_update",
+          plan: {
+            steps: event.plan.steps.map((step) => ({
+              id: step.id,
+              label: step.label,
+              status: step.status,
+            })),
+            updatedAt: event.plan.updatedAt.toISOString(),
           },
         });
         continue;

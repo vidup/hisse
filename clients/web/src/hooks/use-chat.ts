@@ -1,6 +1,12 @@
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type AgentMessageActivitySummary, type ChatStreamEvent, type ConversationDetail } from "@/lib/api";
+import {
+  api,
+  type AgentMessageActivitySummary,
+  type ChatStreamEvent,
+  type ConversationDetail,
+  type ConversationPlanSummary,
+} from "@/lib/api";
 
 export function useConversations() {
   return useQuery({ queryKey: ["conversations"], queryFn: api.chat.list });
@@ -50,6 +56,7 @@ export function useSendMessage() {
   const qc = useQueryClient();
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingActivities, setStreamingActivities] = useState<AgentMessageActivitySummary[]>([]);
+  const [streamingPlan, setStreamingPlan] = useState<ConversationPlanSummary | undefined>();
   const [isStreaming, setIsStreaming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [streamPhase, setStreamPhase] = useState<ChatStreamPhase>("idle");
@@ -60,6 +67,7 @@ export function useSendMessage() {
       setIsStreaming(true);
       setStreamingContent("");
       setStreamingActivities([]);
+      setStreamingPlan(undefined);
       setErrorMessage(null);
       setStreamPhase("starting");
       setStreamAgentId(undefined);
@@ -115,6 +123,11 @@ export function useSendMessage() {
           case "activity_end":
             setStreamPhase((current) => (current === "streaming" ? current : "acting"));
             setStreamingActivities((current) => upsertActivity(current, event.activity));
+            return;
+
+          case "plan_update":
+            setStreamPhase((current) => (current === "streaming" ? current : "acting"));
+            setStreamingPlan(event.plan);
             return;
 
           case "done":
@@ -178,6 +191,7 @@ export function useSendMessage() {
         setIsStreaming(false);
         setStreamingContent("");
         setStreamingActivities([]);
+        setStreamingPlan(undefined);
         setStreamPhase("idle");
         setStreamAgentId(undefined);
       }
@@ -193,6 +207,7 @@ export function useSendMessage() {
     send,
     streamingContent,
     streamingActivities,
+    streamingPlan,
     isStreaming,
     errorMessage,
     clearError,

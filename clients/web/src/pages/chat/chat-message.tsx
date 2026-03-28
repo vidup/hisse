@@ -1,6 +1,7 @@
 import { BotIcon, UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { AgentMessageActivitySummary } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Streamdown } from "streamdown";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
@@ -49,79 +50,94 @@ export function ChatMessage({ role, content, activities = [], agentName, isStrea
   const isUser = role === "user";
   const showLoadingState = !isUser && !!loadingLabel && content.length === 0 && activities.length === 0;
 
-  return (
-    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-      <div
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-        }`}
-      >
-        {isUser ? <UserIcon className="size-4" /> : <BotIcon className="size-4" />}
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="flex max-w-[80%] flex-row-reverse gap-3">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <UserIcon className="size-4" />
+          </div>
+          <div className="space-y-1 text-right">
+            <div className="rounded-2xl bg-primary px-4 py-3 text-sm text-primary-foreground shadow-sm">
+              <p className="whitespace-pre-wrap">{content}</p>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className={`max-w-[80%] space-y-1 ${isUser ? "text-right" : ""}`}>
-        {!isUser && agentName && (
-          <Badge variant="secondary" className="text-xs">
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <BotIcon className="size-4" />
+        </div>
+        {agentName ? (
+          <Badge variant="secondary" className="text-[11px]">
             {agentName}
           </Badge>
+        ) : (
+          <span>Assistant</span>
         )}
-        <div
-          className={`rounded-lg px-3 py-2 text-sm ${
-            isUser ? "bg-primary text-primary-foreground" : "bg-muted"
-          }`}
-        >
-          {isUser ? (
-            <p className="whitespace-pre-wrap">{content}</p>
-          ) : showLoadingState ? (
-            <div className="space-y-2 text-muted-foreground">
-              <p className="text-sm">{loadingLabel}</p>
-              <div className="flex items-center gap-1" aria-hidden="true">
-                <span className="size-2 rounded-full bg-current opacity-40 animate-pulse" />
-                <span
-                  className="size-2 rounded-full bg-current opacity-40 animate-pulse"
-                  style={{ animationDelay: "150ms" }}
-                />
-                <span
-                  className="size-2 rounded-full bg-current opacity-40 animate-pulse"
-                  style={{ animationDelay: "300ms" }}
-                />
-              </div>
+        {isStreaming && (
+          <span className="inline-flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-current animate-pulse" />
+            Live
+          </span>
+        )}
+      </div>
+      <div className="space-y-4 pl-9">
+        {showLoadingState ? (
+          <div className="space-y-2 text-muted-foreground">
+            <p className="text-sm">{loadingLabel}</p>
+            <div className="flex items-center gap-1" aria-hidden="true">
+              <span className="size-2 rounded-full bg-current opacity-40 animate-pulse" />
+              <span
+                className="size-2 rounded-full bg-current opacity-40 animate-pulse"
+                style={{ animationDelay: "150ms" }}
+              />
+              <span
+                className="size-2 rounded-full bg-current opacity-40 animate-pulse"
+                style={{ animationDelay: "300ms" }}
+              />
             </div>
-          ) : (
-            <div className="space-y-3">
-              {content.length > 0 && (
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {content.length > 0 && (
+              <div className="text-sm leading-relaxed text-foreground">
                 <Streamdown plugins={plugins} components={components} isAnimating={isStreaming}>
                   {content}
                 </Streamdown>
-              )}
+              </div>
+            )}
 
-              {activities.length > 0 && (
-                <div className="space-y-2 border-t border-border/60 pt-2">
-                  {activities.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between gap-3 text-xs">
-                      <span className="truncate text-foreground/80">{activity.label}</span>
-                      <Badge
-                        variant="outline"
-                        className={
-                          activity.status === "failed"
-                            ? "border-red-500/40 text-red-700"
-                            : activity.status === "completed"
-                              ? "border-emerald-500/40 text-emerald-700"
-                              : "border-amber-500/40 text-amber-700"
-                        }
-                      >
-                        {activity.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {activities.length > 0 && (
+              <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+                {activities.map((activity) => (
+                  <div key={activity.id} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="truncate text-foreground/80">{activity.label}</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        activity.status === "failed" && "border-red-500/40 text-red-700",
+                        activity.status === "completed" && "border-emerald-500/40 text-emerald-700",
+                        activity.status === "running" && "border-amber-500/40 text-amber-700",
+                      )}
+                    >
+                      {activity.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
 
-              {loadingLabel && content.length === 0 && activities.length > 0 && (
-                <p className="text-xs text-muted-foreground">{loadingLabel}</p>
-              )}
-            </div>
-          )}
-        </div>
+            {loadingLabel && content.length === 0 && activities.length > 0 && (
+              <p className="text-xs text-muted-foreground">{loadingLabel}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

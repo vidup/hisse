@@ -16,7 +16,7 @@ import type {
   AgentMessage,
   AgentSkillAccess,
 } from "../domain/ports/agent-runtime.js";
-import type { ConversationActivity } from "../domain/model/message.js";
+import type { ConversationActivity, ConversationPlan } from "../domain/model/message.js";
 import { createPiSystemTools } from "./pi-system-tools.js";
 
 export interface CredentialEntry {
@@ -53,9 +53,63 @@ function summarizeToolLabel(toolName: string, args: Record<string, unknown> | un
       return `Read skill ${typeof args?.name === "string" ? args.name : ""}`.trim();
     case "ReadAgentSkillFile":
       return `Read skill file ${typeof args?.path === "string" ? args.path : ""}`.trim();
+    case "UpdatePlan":
+      return "Update visible plan";
     default:
       return toolName;
   }
+}
+
+function parsePlan(args: unknown): ConversationPlan | undefined {
+  if (!args || typeof args !== "object") {
+    return undefined;
+  }
+
+  const rawSteps = (args as { steps?: unknown }).steps;
+  if (!Array.isArray(rawSteps) || rawSteps.length === 0) {
+    return undefined;
+  }
+
+  const steps = rawSteps
+    .map((step) => {
+      if (!step || typeof step !== "object") {
+        return null;
+      }
+
+      const candidate = step as {
+        id?: unknown;
+        label?: unknown;
+        status?: unknown;
+      };
+
+      if (
+        typeof candidate.id !== "string" ||
+        typeof candidate.label !== "string" ||
+        (candidate.status !== "pending" &&
+          candidate.status !== "in_progress" &&
+          candidate.status !== "completed")
+      ) {
+        return null;
+      }
+
+      const status = candidate.status as "pending" | "in_progress" | "completed";
+
+      return {
+        id: candidate.id,
+        label: candidate.label,
+        status,
+      };
+    })
+    .filter((step): step is NonNullable<typeof step> => !!step);
+
+  if (steps.length === 0) {
+    return undefined;
+  }
+
+  return {
+    steps,
+    updatedAt: new Date(),
+  };
 }
 
 export class PiAgentRuntime implements AgentRuntime {
@@ -179,6 +233,14 @@ class PiSessionHandle implements AgentSessionHandle {
           push({ type: "text_delta", content: ame.delta });
         }
       } else if (event.type === "tool_execution_start") {
+        if (event.toolName === "UpdatePlan") {
+          const plan = parsePlan(event.args);
+          if (plan) {
+            push({ type: "plan_update", plan });
+          }
+          return;
+        }
+
         const activity: ConversationActivity = {
           id: event.toolCallId,
           kind: "tool",
@@ -190,11 +252,19 @@ class PiSessionHandle implements AgentSessionHandle {
         activities.set(activity.id, activity);
         push({ type: "activity_start", activity });
       } else if (event.type === "tool_execution_update") {
+        if (event.toolName === "UpdatePlan") {
+          return;
+        }
+
         const existing = activities.get(event.toolCallId);
         if (existing) {
           push({ type: "activity_update", activity: existing });
         }
       } else if (event.type === "tool_execution_end") {
+        if (event.toolName === "UpdatePlan") {
+          return;
+        }
+
         const existing = activities.get(event.toolCallId);
         const activity: ConversationActivity = {
           id: event.toolCallId,

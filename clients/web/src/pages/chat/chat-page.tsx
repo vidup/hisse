@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAgents } from "@/hooks/use-agents";
 import { useConversation, useConversations, useSendMessage } from "@/hooks/use-chat";
 import { useSkills } from "@/hooks/use-skills";
+import { useRightPanel } from "@/layouts/right-panel";
 import {
   useUpdateWorkspaceChatSettings,
   useWorkspaceChatSettings,
@@ -13,6 +14,7 @@ import {
 import { ChatConversationList } from "./chat-conversation-list";
 import { ChatInput } from "./chat-input";
 import { ChatMessage } from "./chat-message";
+import { ChatWorkspacePanel } from "./chat-workspace-panel";
 
 export function ChatPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -23,10 +25,12 @@ export function ChatPage() {
   const { data: skills } = useSkills();
   const { data: workspaceChatSettings } = useWorkspaceChatSettings();
   const updateWorkspaceChatSettings = useUpdateWorkspaceChatSettings();
+  const { setContent: setRightPanelContent } = useRightPanel();
   const {
     send,
     streamingContent,
     streamingActivities,
+    streamingPlan,
     isStreaming,
     errorMessage,
     streamPhase,
@@ -107,6 +111,31 @@ export function ChatPage() {
     return "Pick an agent now, or save one as the workspace default.";
   }, [hasAgents, workspaceChatSettings?.defaultChatAgentId]);
 
+  const rightPanelContent = useMemo(() => {
+    if (!conversationId && !isStreaming) {
+      return null;
+    }
+
+    return (
+      <ChatWorkspacePanel
+        conversation={conversation}
+        isStreaming={isStreaming}
+        streamingActivities={streamingActivities}
+        streamingPlan={streamingPlan}
+      />
+    );
+  }, [conversation, conversationId, isStreaming, streamingActivities, streamingPlan]);
+
+  useEffect(() => {
+    setRightPanelContent(rightPanelContent);
+  }, [rightPanelContent, setRightPanelContent]);
+
+  useEffect(() => {
+    return () => {
+      setRightPanelContent(null);
+    };
+  }, [setRightPanelContent]);
+
   const handleSend = useCallback(
     async (content: string) => {
       await send({
@@ -135,7 +164,7 @@ export function ChatPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-4">
+          <div className="mx-auto w-full max-w-4xl space-y-6">
             {isNewConversationView && (
               <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-6 py-20 text-center">
                 <div className="space-y-2">

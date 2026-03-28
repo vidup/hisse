@@ -2,6 +2,7 @@ export type ConversationEntryId = string;
 export type ConversationActivityKind = "tool";
 export type ConversationActivityStatus = "running" | "completed" | "failed";
 export type AssistantTurnStatus = "in_progress" | "completed" | "failed";
+export type ConversationPlanStepStatus = "pending" | "in_progress" | "completed";
 
 export interface ConversationActivity {
   id: string;
@@ -11,6 +12,17 @@ export interface ConversationActivity {
   status: ConversationActivityStatus;
   startedAt: Date;
   completedAt?: Date;
+}
+
+export interface ConversationPlanStep {
+  id: string;
+  label: string;
+  status: ConversationPlanStepStatus;
+}
+
+export interface ConversationPlan {
+  steps: ConversationPlanStep[];
+  updatedAt: Date;
 }
 
 interface BaseConversationEntry {
@@ -32,6 +44,7 @@ export interface AssistantTurnEntry extends BaseConversationEntry {
   error?: string;
   providerMessageRef?: string;
   activities: ConversationActivity[];
+  plan?: ConversationPlan;
 }
 
 export type ConversationEntry = UserTurnEntry | AssistantTurnEntry;
@@ -62,6 +75,7 @@ export function createAssistantTurnEntry(params: {
   error?: string;
   providerMessageRef?: string;
   activities?: ConversationActivity[];
+  plan?: ConversationPlan;
 }): AssistantTurnEntry {
   const now = new Date();
 
@@ -77,6 +91,7 @@ export function createAssistantTurnEntry(params: {
     error: params.error,
     providerMessageRef: params.providerMessageRef,
     activities: params.activities ?? [],
+    plan: params.plan,
   };
 }
 
@@ -102,6 +117,7 @@ export function rehydrateConversationEntry(params:
       error?: string;
       providerMessageRef?: string;
       activities?: ConversationActivity[];
+      plan?: ConversationPlan;
     }
 ): ConversationEntry {
   if (params.kind === "user_turn") {
@@ -128,5 +144,6 @@ export function rehydrateConversationEntry(params:
     error: params.error,
     providerMessageRef: params.providerMessageRef,
     activities: params.activities ?? [],
+    plan: params.plan,
   };
 }

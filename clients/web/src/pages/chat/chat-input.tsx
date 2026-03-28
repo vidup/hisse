@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react";
-import { SendIcon } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { CornerDownLeftIcon, SendIcon, SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -11,6 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAgents } from "@/hooks/use-agents";
 import { useSkills } from "@/hooks/use-skills";
+import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
   onSend: (content: string) => void;
@@ -23,6 +25,17 @@ interface ChatInputProps {
 }
 
 const MENTION_REGEX = /(?:^|\s)@(\w[\w-]*)/;
+
+function previewSkillContent(content: string): string {
+  const preview = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+    .join("\n");
+
+  return preview.length > 0 ? preview : "No entry content preview available.";
+}
 
 export function ChatInput({
   onSend,
@@ -37,13 +50,28 @@ export function ChatInput({
   const [showMentions, setShowMentions] = useState(false);
   const [showSkills, setShowSkills] = useState(false);
   const [filter, setFilter] = useState("");
+  const [activeMentionIndex, setActiveMentionIndex] = useState(0);
+  const [activeSkillIndex, setActiveSkillIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: agents } = useAgents();
   const { data: skills } = useSkills();
 
-  const filteredAgents = agents?.filter((agent) => agent.name.toLowerCase().includes(filter)) || [];
-  const filteredSkills = skills?.filter((skill) => skill.name.toLowerCase().includes(filter)) || [];
+  const filteredAgents = useMemo(
+    () =>
+      (agents ?? [])
+        .filter((agent) => agent.name.toLowerCase().includes(filter))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [agents, filter],
+  );
+  const filteredSkills = useMemo(
+    () =>
+      (skills ?? [])
+        .filter((skill) => skill.name.toLowerCase().includes(filter))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    [filter, skills],
+  );
+  const selectedSkill = filteredSkills[activeSkillIndex] ?? filteredSkills[0];
   const canSend =
     !!value.trim() &&
     !disabled &&
@@ -58,16 +86,6 @@ export function ChatInput({
     setShowSkills(false);
   }, [canSend, onSend, value]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSubmit();
-      }
-    },
-    [handleSubmit],
-  );
-
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setValue(text);
@@ -80,10 +98,12 @@ export function ChatInput({
       setShowMentions(true);
       setShowSkills(false);
       setFilter(text.slice(lastAt + 1).toLowerCase());
+      setActiveMentionIndex(0);
     } else if (lastSlash > lastSpace) {
       setShowSkills(true);
       setShowMentions(false);
       setFilter(text.slice(lastSlash + 1).toLowerCase());
+      setActiveSkillIndex(0);
     } else {
       setShowMentions(false);
       setShowSkills(false);
@@ -96,6 +116,7 @@ export function ChatInput({
       const nextValue = value.slice(0, lastAt) + `@${name} `;
       setValue(nextValue);
       setShowMentions(false);
+      setActiveMentionIndex(0);
       textareaRef.current?.focus();
     },
     [value],
@@ -107,6 +128,7 @@ export function ChatInput({
       const nextValue = value.slice(0, lastSlash) + `/${name} `;
       setValue(nextValue);
       setShowSkills(false);
+      setActiveSkillIndex(0);
       textareaRef.current?.focus();
     },
     [value],
@@ -119,21 +141,98 @@ export function ChatInput({
       setValue(nextValue);
       setShowMentions(false);
       setShowSkills(false);
+      setActiveSkillIndex(0);
       textareaRef.current?.focus();
     },
     [value],
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (showMentions && filteredAgents.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setActiveMentionIndex((current) => (current + 1) % filteredAgents.length);
+          return;
+        }
+
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setActiveMentionIndex((current) =>
+            current === 0 ? filteredAgents.length - 1 : current - 1,
+          );
+          return;
+        }
+
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          insertMention((filteredAgents[activeMentionIndex] ?? filteredAgents[0]).name);
+          return;
+        }
+      }
+
+      if (showSkills) {
+        if (filteredSkills.length > 0 && e.key === "ArrowDown") {
+          e.preventDefault();
+          setActiveSkillIndex((current) => (current + 1) % filteredSkills.length);
+          return;
+        }
+
+        if (filteredSkills.length > 0 && e.key === "ArrowUp") {
+          e.preventDefault();
+          setActiveSkillIndex((current) =>
+            current === 0 ? filteredSkills.length - 1 : current - 1,
+          );
+          return;
+        }
+
+        if (filteredSkills.length > 0 && e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          insertSkill((filteredSkills[activeSkillIndex] ?? filteredSkills[0]).name);
+          return;
+        }
+
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setShowSkills(false);
+          return;
+        }
+      }
+
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [
+      activeMentionIndex,
+      activeSkillIndex,
+      filteredAgents,
+      filteredSkills,
+      handleSubmit,
+      insertMention,
+      insertSkill,
+      showMentions,
+      showSkills,
+    ],
+  );
+
   return (
     <div className="relative border-t p-3">
       {showMentions && filteredAgents.length > 0 && (
-        <div className="absolute right-3 bottom-full left-3 mb-1 rounded-md border bg-popover p-1 shadow-md">
+        <div className="absolute right-3 bottom-full left-3 z-20 mb-2 rounded-xl border bg-popover/95 p-1 shadow-xl backdrop-blur">
           {filteredAgents.map((agent) => (
             <button
               key={agent.id}
               type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-accent",
+                filteredAgents[activeMentionIndex]?.id === agent.id && "bg-accent",
+              )}
               onClick={() => insertMention(agent.name)}
+              onMouseEnter={() =>
+                setActiveMentionIndex(filteredAgents.findIndex((candidate) => candidate.id === agent.id))
+              }
             >
               <span className="font-medium">@{agent.name}</span>
               <span className="text-muted-foreground">{agent.description}</span>
@@ -142,19 +241,86 @@ export function ChatInput({
         </div>
       )}
 
-      {showSkills && filteredSkills.length > 0 && (
-        <div className="absolute right-3 bottom-full left-3 mb-1 rounded-md border bg-popover p-1 shadow-md">
-          {filteredSkills.map((skill) => (
-            <button
-              key={skill.id}
-              type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-              onClick={() => insertSkill(skill.name)}
-            >
-              <span className="font-medium">/{skill.name}</span>
-              <span className="text-muted-foreground">{skill.description}</span>
-            </button>
-          ))}
+      {showSkills && (
+        <div className="absolute right-3 bottom-full left-3 z-20 mb-3 overflow-hidden rounded-2xl border bg-background/95 shadow-2xl backdrop-blur">
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="space-y-1">
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Skills
+              </p>
+              <p className="text-sm font-medium">
+                {filter ? `/${filter}` : "Type / to browse available skills"}
+              </p>
+            </div>
+            <div className="hidden items-center gap-1 text-xs text-muted-foreground md:flex">
+              <CornerDownLeftIcon className="size-3.5" />
+              Enter to insert
+            </div>
+          </div>
+
+          {filteredSkills.length > 0 ? (
+            <div className="grid max-h-[24rem] grid-cols-1 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+              <ScrollArea className="h-[24rem] border-r">
+                <div className="p-2">
+                  {filteredSkills.map((skill, index) => (
+                    <button
+                      key={skill.id}
+                      type="button"
+                      className={cn(
+                        "flex w-full flex-col items-start gap-1 rounded-xl px-3 py-3 text-left transition-colors hover:bg-accent",
+                        index === activeSkillIndex && "bg-accent",
+                      )}
+                      onClick={() => insertSkill(skill.name)}
+                      onMouseEnter={() => setActiveSkillIndex(index)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <SparklesIcon className="size-3.5 text-muted-foreground" />
+                        <span className="font-medium">/{skill.name}</span>
+                      </div>
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
+                        {skill.description || "No description provided."}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <div className="hidden h-[24rem] flex-col justify-between bg-muted/20 md:flex">
+                {selectedSkill ? (
+                  <>
+                    <div className="space-y-4 p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                          Selected skill
+                        </p>
+                        <p className="text-base font-semibold">/{selectedSkill.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedSkill.description || "No description provided."}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                          Preview
+                        </p>
+                        <div className="rounded-xl border bg-background px-3 py-3 text-xs leading-relaxed whitespace-pre-wrap text-foreground/85">
+                          {previewSkillContent(selectedSkill.content)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t bg-background/60 px-4 py-3 text-xs text-muted-foreground">
+                      Skills are available as slash commands across the workspace.
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="px-4 py-5 text-sm text-muted-foreground">
+              No skills match <span className="font-medium">/{filter}</span>.
+            </div>
+          )}
         </div>
       )}
 

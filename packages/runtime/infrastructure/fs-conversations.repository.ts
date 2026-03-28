@@ -5,6 +5,7 @@ import {
   rehydrateConversationEntry,
   type AssistantTurnStatus,
   type ConversationActivity,
+  type ConversationPlan,
   type ConversationEntry,
 } from "../domain/model/message.js";
 import type { ConversationsRepository } from "../domain/ports/conversations.repository.js";
@@ -25,6 +26,15 @@ interface ConversationActivityMeta {
   status: ConversationActivity["status"];
   startedAt: string;
   completedAt?: string;
+}
+
+interface ConversationPlanMeta {
+  steps: Array<{
+    id: string;
+    label: string;
+    status: "pending" | "in_progress" | "completed";
+  }>;
+  updatedAt: string;
 }
 
 type ConversationEntryMeta =
@@ -49,6 +59,7 @@ type ConversationEntryMeta =
       error?: string;
       providerMessageRef?: string;
       activities?: ConversationActivityMeta[];
+      plan?: ConversationPlanMeta;
     };
 
 export class FsConversationsRepository implements ConversationsRepository {
@@ -101,6 +112,16 @@ export class FsConversationsRepository implements ConversationsRepository {
                   startedAt: activity.startedAt.toISOString(),
                   completedAt: activity.completedAt?.toISOString(),
                 })),
+                plan: entry.plan
+                  ? {
+                      steps: entry.plan.steps.map((step) => ({
+                        id: step.id,
+                        label: step.label,
+                        status: step.status,
+                      })),
+                      updatedAt: entry.plan.updatedAt.toISOString(),
+                    }
+                  : undefined,
               } satisfies ConversationEntryMeta,
         ),
       )
@@ -216,6 +237,16 @@ export class FsConversationsRepository implements ConversationsRepository {
               startedAt: new Date(activity.startedAt),
               completedAt: activity.completedAt ? new Date(activity.completedAt) : undefined,
             })),
+            plan: meta.plan
+              ? {
+                  steps: meta.plan.steps.map((step) => ({
+                    id: step.id,
+                    label: step.label,
+                    status: step.status,
+                  })),
+                  updatedAt: new Date(meta.plan.updatedAt),
+                } satisfies ConversationPlan
+              : undefined,
           }),
         );
       } catch {

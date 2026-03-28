@@ -1,7 +1,7 @@
 import type { ConversationsRepository } from "../../domain/ports/conversations.repository.js";
 import type { AgentStreamEvent } from "../../domain/ports/agent-runtime.js";
 import { Conversation } from "../../domain/model/conversation.js";
-import type { ConversationActivity } from "../../domain/model/message.js";
+import type { ConversationActivity, ConversationPlan } from "../../domain/model/message.js";
 
 function finalizeActivities(
   activities: Iterable<ConversationActivity>,
@@ -30,6 +30,7 @@ export async function* persistConversationStream(params: {
   let assistantContent = "";
   let finalized = false;
   const activities = new Map<string, ConversationActivity>();
+  let latestPlan: ConversationPlan | undefined;
 
   for await (const event of params.source) {
     if (event.type === "text_delta") {
@@ -44,11 +45,18 @@ export async function* persistConversationStream(params: {
       continue;
     }
 
+    if (event.type === "plan_update") {
+      latestPlan = event.plan;
+      yield event;
+      continue;
+    }
+
     if (event.type === "error") {
       params.conversation.addFailedAssistantTurn(
         assistantContent,
         event.error,
         finalizeActivities(activities.values(), "failed"),
+        latestPlan,
       );
       await params.conversationsRepo.save(params.conversation);
       finalized = true;
@@ -61,6 +69,7 @@ export async function* persistConversationStream(params: {
       params.conversation.addCompletedAssistantTurn(
         finalContent,
         finalizeActivities(activities.values()),
+        latestPlan,
       );
       await params.conversationsRepo.save(params.conversation);
       finalized = true;
@@ -73,6 +82,7 @@ export async function* persistConversationStream(params: {
       assistantContent,
       "Assistant stream ended unexpectedly.",
       finalizeActivities(activities.values(), "failed"),
+      latestPlan,
     );
     await params.conversationsRepo.save(params.conversation);
   }

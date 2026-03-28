@@ -10,7 +10,7 @@ import {
   createWriteToolDefinition,
   type ToolDefinition,
 } from "@mariozechner/pi-coding-agent";
-import type { AgentSkillAccess } from "../domain/ports/agent-runtime.js";
+import type { AgentPlanStepInput, AgentSkillAccess } from "../domain/ports/agent-runtime.js";
 
 type AnyToolDefinition = ToolDefinition<any, any, any>;
 
@@ -95,9 +95,25 @@ const readAgentSkillFileSchema = Type.Object({
   path: Type.String({ description: "Relative path inside the selected skill" }),
 });
 
+const updatePlanSchema = Type.Object({
+  steps: Type.Array(
+    Type.Object({
+      id: Type.String({ description: "Stable step identifier" }),
+      label: Type.String({ description: "Short user-facing step label" }),
+      status: Type.Union([
+        Type.Literal("pending"),
+        Type.Literal("in_progress"),
+        Type.Literal("completed"),
+      ]),
+    }),
+    { minItems: 1, maxItems: 12 },
+  ),
+});
+
 type AppendToolInput = Static<typeof appendSchema>;
 type ReadAgentSkillToolInput = Static<typeof readAgentSkillSchema>;
 type ReadAgentSkillFileToolInput = Static<typeof readAgentSkillFileSchema>;
+type UpdatePlanToolInput = Static<typeof updatePlanSchema>;
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -335,6 +351,28 @@ function createReadAgentSkillFileToolDefinition(
   };
 }
 
+function createUpdatePlanToolDefinition(): ToolDefinition<typeof updatePlanSchema> {
+  return {
+    name: "UpdatePlan",
+    label: "Update plan",
+    description: "Publish the latest short plan for the current run so the UI can display it.",
+    promptSnippet: "Update the visible plan for the current run",
+    promptGuidelines: [
+      "Use this when a task would benefit from a short visible plan.",
+      "Keep the plan concise and current.",
+      "Only one step should be marked in_progress at a time.",
+    ],
+    parameters: updatePlanSchema,
+    async execute(_toolCallId, params: UpdatePlanToolInput) {
+      const lines = params.steps.map((step: AgentPlanStepInput) => `- [${step.status}] ${step.label}`);
+      return {
+        content: [{ type: "text", text: `Plan updated:\n${lines.join("\n")}` }],
+        details: undefined,
+      };
+    },
+  };
+}
+
 export function createPiSystemTools(
   rootDir: string,
   skillsBaseDir: string,
@@ -350,6 +388,7 @@ export function createPiSystemTools(
   const listAgentSkills = createListAgentSkillsToolDefinition(skills);
   const readAgentSkill = createReadAgentSkillToolDefinition(skillsBaseDir, skills);
   const readAgentSkillFile = createReadAgentSkillFileToolDefinition(skillsBaseDir, skills);
+  const updatePlan = createUpdatePlanToolDefinition();
 
   return [
     read,
@@ -362,5 +401,6 @@ export function createPiSystemTools(
     listAgentSkills,
     readAgentSkill,
     readAgentSkillFile,
+    updatePlan,
   ];
 }
