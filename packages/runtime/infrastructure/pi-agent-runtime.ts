@@ -2,6 +2,7 @@
 import {
   createAgentSession,
   AuthStorage,
+  DefaultResourceLoader,
   ModelRegistry,
   SessionManager,
   InMemoryAuthStorageBackend,
@@ -166,24 +167,34 @@ export class PiAgentRuntime implements AgentRuntime {
     console.log(`[pi] Creating session for workspace ${cwd} with session dir ${sessionDir}`);
 
     const sessionManager = SessionManager.create(cwd, sessionDir);
+    const resourceLoader = new DefaultResourceLoader({
+      cwd,
+      appendSystemPrompt: params.systemPrompt,
+      noExtensions: true,
+      noSkills: true,
+      noPromptTemplates: true,
+    });
+    await resourceLoader.reload();
 
     const { session } = await createAgentSession({
       cwd,
       authStorage,
       modelRegistry,
       sessionManager,
+      resourceLoader,
       model,
       tools: [],
       customTools: createPiSystemTools(cwd, this.skillsBaseDir, params.availableSkills),
     });
 
-    const handle = new PiSessionHandle(session, params.systemPrompt);
+    const handle = new PiSessionHandle(session);
     this.sessions.set(params.sessionId, handle);
     return handle;
   }
 
   async resumeSession(params: {
     sessionId: string;
+    systemPrompt: string;
     availableSkills: AgentSkillAccess[];
   }): Promise<AgentSessionHandle> {
     // Check in-memory cache first
@@ -196,16 +207,25 @@ export class PiAgentRuntime implements AgentRuntime {
     console.log(`[pi] Resuming session for workspace ${cwd} with session dir ${sessionDir}`);
 
     const sessionManager = SessionManager.continueRecent(cwd, sessionDir);
+    const resourceLoader = new DefaultResourceLoader({
+      cwd,
+      appendSystemPrompt: params.systemPrompt,
+      noExtensions: true,
+      noSkills: true,
+      noPromptTemplates: true,
+    });
+    await resourceLoader.reload();
 
     const { session } = await createAgentSession({
       cwd,
       authStorage,
       modelRegistry,
       sessionManager,
+      resourceLoader,
       tools: [],
       customTools: createPiSystemTools(cwd, this.skillsBaseDir, params.availableSkills),
     });
-    const handle = new PiSessionHandle(session, "");
+    const handle = new PiSessionHandle(session);
     this.sessions.set(params.sessionId, handle);
     return handle;
   }
@@ -214,7 +234,6 @@ export class PiAgentRuntime implements AgentRuntime {
 class PiSessionHandle implements AgentSessionHandle {
   constructor(
     private readonly session: CreateAgentSessionResult["session"],
-    private readonly systemPrompt: string,
   ) { }
 
   async *prompt(message: string): AsyncIterable<AgentStreamEvent> {
@@ -292,11 +311,7 @@ class PiSessionHandle implements AgentSessionHandle {
       }
     }
 
-    if (this.systemPrompt) {
-      this.session.agent.setSystemPrompt(this.systemPrompt);
-    }
-
-    const promptPromise = this.session.prompt(message).catch((err) => {
+    const promptPromise = this.session.prompt(message, { expandPromptTemplates: false }).catch((err) => {
       failed = true;
       push({ type: "error", error: err instanceof Error ? err.message : String(err) });
       push(null);

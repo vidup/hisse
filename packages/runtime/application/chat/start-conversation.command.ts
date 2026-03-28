@@ -7,6 +7,7 @@ import type { Agent } from "../../domain/model/agent.js";
 import { Conversation } from "../../domain/model/conversation.js";
 import { parseMentions } from "../../domain/services/parse-input.js";
 import { persistConversationStream } from "./persist-conversation-stream.js";
+import { composeSystemPrompt } from "../prompting/compose-system-prompt.js";
 import {
   buildSkillInvocationInstruction,
   getAgentAvailableSkills,
@@ -79,7 +80,10 @@ export class StartConversationCommandHandler {
 
     const session = await this.agentRuntime.createSession({
       sessionId: conversation.id,
-      systemPrompt: agent.systemPrompt,
+      systemPrompt: composeSystemPrompt({
+        surface: "chat",
+        agent,
+      }),
       provider: agent.provider,
       model: agent.model,
       availableSkills,

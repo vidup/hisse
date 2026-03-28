@@ -4,6 +4,7 @@ import type { ConversationsRepository } from "../../domain/ports/conversations.r
 import type { AgentRuntime, AgentStreamEvent } from "../../domain/ports/agent-runtime.js";
 import { parseMentions } from "../../domain/services/parse-input.js";
 import { persistConversationStream } from "./persist-conversation-stream.js";
+import { composeSystemPrompt } from "../prompting/compose-system-prompt.js";
 import {
   buildSkillInvocationInstruction,
   getAgentAvailableSkills,
@@ -53,6 +54,10 @@ export class SendMessageCommandHandler {
 
     const session = await this.agentRuntime.resumeSession({
       sessionId: conversation.id,
+      systemPrompt: composeSystemPrompt({
+        surface: "chat",
+        agent,
+      }),
       availableSkills,
     });
 

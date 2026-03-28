@@ -44,6 +44,7 @@ export interface AgentRuntime {
 
   resumeSession(params: {
     sessionId: string;
+    systemPrompt: string;
     availableSkills: AgentSkillAccess[];
   }): Promise<AgentSessionHandle>;
 }
