@@ -82,6 +82,39 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
 
   const previewQuery = useWorkspaceImportPreview(sourceWorkspacePath || null, open);
 
+  useEffect(() => {
+    if (!previewQuery.data) return;
+
+    const conflictingAgentIds = new Set(
+      previewQuery.data.agents
+        .filter((agent) => agent.status === "conflict")
+        .map((agent) => agent.id),
+    );
+    const conflictingSkillIds = new Set(
+      previewQuery.data.skills
+        .filter((skill) => skill.status === "conflict")
+        .map((skill) => skill.id),
+    );
+    const conflictingToolNames = new Set(
+      previewQuery.data.tools
+        .filter((tool) => tool.status === "conflict")
+        .map((tool) => tool.name),
+    );
+
+    setSelectedAgentIds((currentValues) => {
+      const nextValues = currentValues.filter((value) => !conflictingAgentIds.has(value));
+      return nextValues.length === currentValues.length ? currentValues : nextValues;
+    });
+    setSelectedSkillIds((currentValues) => {
+      const nextValues = currentValues.filter((value) => !conflictingSkillIds.has(value));
+      return nextValues.length === currentValues.length ? currentValues : nextValues;
+    });
+    setSelectedToolNames((currentValues) => {
+      const nextValues = currentValues.filter((value) => !conflictingToolNames.has(value));
+      return nextValues.length === currentValues.length ? currentValues : nextValues;
+    });
+  }, [previewQuery.data]);
+
   const requiredSkillIds = useMemo(() => {
     const requiredSkills = new Set<string>();
 
@@ -123,6 +156,15 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
   const importError =
     importMutation.error instanceof Error ? importMutation.error.message : null;
   const previewError = previewQuery.error instanceof Error ? previewQuery.error.message : null;
+  const conflictCount = useMemo(() => {
+    if (!previewQuery.data) return 0;
+
+    return (
+      previewQuery.data.agents.filter((agent) => agent.status === "conflict").length +
+      previewQuery.data.skills.filter((skill) => skill.status === "conflict").length +
+      previewQuery.data.tools.filter((tool) => tool.status === "conflict").length
+    );
+  }, [previewQuery.data]);
 
   function closeDialog() {
     importMutation.reset();
@@ -174,7 +216,7 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                   <SelectLabel>Recent workspaces</SelectLabel>
                   {availableSourcePaths.map((workspacePath) => (
                     <SelectItem key={workspacePath} value={workspacePath}>
-                      {getWorkspaceName(workspacePath)} · {workspacePath}
+                      {getWorkspaceName(workspacePath)} - {workspacePath}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -217,7 +259,15 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                   <WrenchIcon className="size-3" />
                   {previewQuery.data.tools.length} tools
                 </Badge>
+                {conflictCount > 0 && <Badge variant="destructive">{conflictCount} conflicts</Badge>}
               </div>
+
+              {conflictCount > 0 && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                  Conflicting items already exist in the current workspace and are blocked from
+                  import.
+                </div>
+              )}
 
               <div className="grid gap-4 lg:grid-cols-3">
                 <div className="grid min-h-0 gap-2">
@@ -235,11 +285,16 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                       {previewQuery.data.agents.map((agent) => (
                         <label
                           key={agent.id}
-                          className="grid gap-2 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/40"
+                          className={cn(
+                            "grid gap-2 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/40",
+                            agent.status === "conflict" &&
+                              "border-destructive/40 bg-destructive/5 hover:bg-destructive/5",
+                          )}
                         >
                           <div className="flex items-start gap-3">
                             <Checkbox
                               checked={selectedAgentIds.includes(agent.id)}
+                              disabled={agent.status === "conflict"}
                               onCheckedChange={() =>
                                 setSelectedAgentIds((currentValues) =>
                                   toggleSelection(currentValues, agent.id),
@@ -247,9 +302,14 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                               }
                             />
                             <div className="min-w-0 flex-1">
-                              <div className="truncate font-medium">{agent.name}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="truncate font-medium">{agent.name}</span>
+                                {agent.status === "conflict" && (
+                                  <Badge variant="destructive">conflict</Badge>
+                                )}
+                              </div>
                               <div className="truncate text-xs text-muted-foreground">
-                                {agent.provider} · {agent.model}
+                                {agent.provider} - {agent.model}
                               </div>
                             </div>
                           </div>
@@ -258,6 +318,11 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                             <Badge variant="secondary">{agent.skillIds.length} skills</Badge>
                             <Badge variant="secondary">{agent.toolNames.length} tools</Badge>
                           </div>
+                          {agent.conflictReasons.map((reason) => (
+                            <div key={reason} className="text-xs text-destructive">
+                              {reason}
+                            </div>
+                          ))}
                         </label>
                       ))}
                     </div>
@@ -279,6 +344,7 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                       {previewQuery.data.skills.map((skill) => {
                         const requiredByAgent = requiredSkillIds.has(skill.id);
                         const checked = effectiveSkillIds.has(skill.id);
+                        const hasConflict = skill.status === "conflict";
 
                         return (
                           <label
@@ -286,12 +352,14 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                             className={cn(
                               "grid gap-2 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/40",
                               requiredByAgent && "bg-muted/30",
+                              hasConflict &&
+                                "border-destructive/40 bg-destructive/5 hover:bg-destructive/5",
                             )}
                           >
                             <div className="flex items-start gap-3">
                               <Checkbox
                                 checked={checked}
-                                disabled={requiredByAgent}
+                                disabled={requiredByAgent || hasConflict}
                                 onCheckedChange={() =>
                                   setSelectedSkillIds((currentValues) =>
                                     toggleSelection(currentValues, skill.id),
@@ -304,10 +372,16 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                                   {requiredByAgent && (
                                     <Badge variant="secondary">required by agent</Badge>
                                   )}
+                                  {hasConflict && <Badge variant="destructive">conflict</Badge>}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   {skill.description}
                                 </div>
+                                {skill.conflictReason && (
+                                  <div className="text-xs text-destructive">
+                                    {skill.conflictReason}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </label>
@@ -332,6 +406,7 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                       {previewQuery.data.tools.map((tool) => {
                         const requiredByAgent = requiredToolNames.has(tool.name);
                         const checked = effectiveToolNames.has(tool.name);
+                        const hasConflict = tool.status === "conflict";
 
                         return (
                           <label
@@ -339,11 +414,13 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                             className={cn(
                               "flex items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/40",
                               requiredByAgent && "bg-muted/30",
+                              hasConflict &&
+                                "border-destructive/40 bg-destructive/5 hover:bg-destructive/5",
                             )}
                           >
                             <Checkbox
                               checked={checked}
-                              disabled={requiredByAgent}
+                              disabled={requiredByAgent || hasConflict}
                               onCheckedChange={() =>
                                 setSelectedToolNames((currentValues) =>
                                   toggleSelection(currentValues, tool.name),
@@ -356,7 +433,13 @@ export function WorkspaceImportDialog({ open, onOpenChange }: WorkspaceImportDia
                                 {requiredByAgent && (
                                   <Badge variant="secondary">required by agent</Badge>
                                 )}
+                                {hasConflict && <Badge variant="destructive">conflict</Badge>}
                               </div>
+                              {tool.conflictReason && (
+                                <div className="text-xs text-destructive">
+                                  {tool.conflictReason}
+                                </div>
+                              )}
                             </div>
                           </label>
                         );

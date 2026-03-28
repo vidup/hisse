@@ -190,16 +190,22 @@ export interface WorkspaceImportAgentPreview {
   model: string;
   skillIds: string[];
   toolNames: string[];
+  status: "new" | "conflict";
+  conflictReasons: string[];
 }
 
 export interface WorkspaceImportSkillPreview {
   id: string;
   name: string;
   description: string;
+  status: "new" | "conflict";
+  conflictReason?: string;
 }
 
 export interface WorkspaceImportToolPreview {
   name: string;
+  status: "new" | "conflict";
+  conflictReason?: string;
 }
 
 export interface WorkspaceImportPreview {
