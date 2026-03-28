@@ -273,17 +273,32 @@ export interface ConversationQuestionOptionSummary {
   label: string;
 }
 
+export interface ConversationQuestionScaleMarkSummary {
+  value: number;
+  label?: string;
+}
+
+export interface ConversationQuestionScaleRangeSummary {
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  marks: ConversationQuestionScaleMarkSummary[];
+}
+
 export interface ConversationQuestionSummary {
   id: string;
   label: string;
   description?: string;
-  type: "yes_no" | "single_select" | "multi_select";
+  type: "yes_no" | "single_select" | "multi_select" | "scale";
   options: ConversationQuestionOptionSummary[];
+  range?: ConversationQuestionScaleRangeSummary;
 }
 
 export interface ConversationQuestionAnswerSummary {
   questionId: string;
   selectedOptionIds: string[];
+  numericValue?: number;
   comment: string;
 }
 
@@ -331,6 +346,7 @@ export interface HitlResponseInput {
   answers: Array<{
     questionId: string;
     selectedOptionIds?: string[];
+    numericValue?: number;
     comment?: string;
   }>;
 }

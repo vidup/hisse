@@ -147,6 +147,7 @@ function parseQuestionnaireArtifact(toolCallId: string, args: unknown) {
         description?: unknown;
         type?: unknown;
         options?: unknown;
+        range?: unknown;
       };
 
       if (
@@ -154,7 +155,8 @@ function parseQuestionnaireArtifact(toolCallId: string, args: unknown) {
         typeof questionCandidate.label !== "string" ||
         (questionCandidate.type !== "yes_no" &&
           questionCandidate.type !== "single_select" &&
-          questionCandidate.type !== "multi_select")
+          questionCandidate.type !== "multi_select" &&
+          questionCandidate.type !== "scale")
       ) {
         return null;
       }
@@ -182,6 +184,94 @@ function parseQuestionnaireArtifact(toolCallId: string, args: unknown) {
             .filter((option): option is NonNullable<typeof option> => !!option)
         : undefined;
 
+      if (Array.isArray(questionCandidate.options) && options?.length !== questionCandidate.options.length) {
+        return null;
+      }
+
+      const parseScaleRange = () => {
+        if (!questionCandidate.range || typeof questionCandidate.range !== "object") {
+          return null;
+        }
+
+        const rangeCandidate = questionCandidate.range as {
+          min?: unknown;
+          max?: unknown;
+          step?: unknown;
+          unit?: unknown;
+          marks?: unknown;
+        };
+
+        if (typeof rangeCandidate.min !== "number" || typeof rangeCandidate.max !== "number") {
+          return null;
+        }
+
+        const marks = Array.isArray(rangeCandidate.marks)
+          ? rangeCandidate.marks
+              .map((mark) => {
+                if (!mark || typeof mark !== "object") {
+                  return null;
+                }
+
+                const markCandidate = mark as { value?: unknown; label?: unknown };
+                if (typeof markCandidate.value !== "number") {
+                  return null;
+                }
+
+                if (
+                  markCandidate.label !== undefined &&
+                  typeof markCandidate.label !== "string"
+                ) {
+                  return null;
+                }
+
+                return {
+                  value: markCandidate.value,
+                  label: markCandidate.label,
+                };
+              })
+              .filter((mark): mark is NonNullable<typeof mark> => !!mark)
+          : undefined;
+
+        if (Array.isArray(rangeCandidate.marks) && marks?.length !== rangeCandidate.marks.length) {
+          return null;
+        }
+
+        if (rangeCandidate.step !== undefined && typeof rangeCandidate.step !== "number") {
+          return null;
+        }
+
+        if (rangeCandidate.unit !== undefined && typeof rangeCandidate.unit !== "string") {
+          return null;
+        }
+
+        return {
+          min: rangeCandidate.min,
+          max: rangeCandidate.max,
+          step: rangeCandidate.step,
+          unit: rangeCandidate.unit,
+          marks,
+        };
+      }
+
+      if (questionCandidate.type === "scale") {
+        const range = parseScaleRange();
+        if (!range) {
+          return null;
+        }
+
+        return {
+          id: questionCandidate.id,
+          label: questionCandidate.label,
+          description:
+            typeof questionCandidate.description === "string"
+              ? questionCandidate.description
+              : undefined,
+          type: questionCandidate.type,
+          options,
+          range,
+        } satisfies ConversationQuestionDefinitionInput;
+      }
+
       return {
         id: questionCandidate.id,
         label: questionCandidate.label,
@@ -194,9 +284,11 @@ function parseQuestionnaireArtifact(toolCallId: string, args: unknown) {
       } satisfies ConversationQuestionDefinitionInput;
     })();
 
-    if (normalizedQuestion) {
-      questions.push(normalizedQuestion);
+    if (!normalizedQuestion) {
+      return undefined;
     }
+
+    questions.push(normalizedQuestion);
   }
 
   if (questions.length === 0) {

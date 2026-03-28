@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2Icon, CircleHelpIcon, LoaderCircleIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import type {
   ConversationQuestionAnswerSummary,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 interface QuestionDraft {
   selectedOptionIds: string[];
+  numericValue?: number;
   comment: string;
 }
 
@@ -29,6 +31,7 @@ function createDrafts(artifact: QuestionnaireArtifactSummary): Record<string, Qu
         question.id,
         {
           selectedOptionIds: answer?.selectedOptionIds ?? [],
+          numericValue: answer?.numericValue,
           comment: answer?.comment ?? "",
         },
       ];
@@ -37,39 +40,102 @@ function createDrafts(artifact: QuestionnaireArtifactSummary): Record<string, Qu
 }
 
 function isQuestionAnswered(draft: QuestionDraft | undefined): boolean {
-  return !!draft && (draft.selectedOptionIds.length > 0 || draft.comment.trim().length > 0);
+  return (
+    !!draft &&
+    (draft.selectedOptionIds.length > 0 ||
+      draft.numericValue !== undefined ||
+      draft.comment.trim().length > 0)
+  );
 }
 
-function renderAnswerSummary(
+function getSelectedLabels(
   question: ConversationQuestionSummary,
-  answers: ConversationQuestionAnswerSummary[],
-): string {
-  const answer = answers.find((candidate) => candidate.questionId === question.id);
-  if (!answer) {
-    return "No response recorded.";
-  }
-
-  const selectedLabels = answer.selectedOptionIds
+  answer: ConversationQuestionAnswerSummary | undefined,
+): string[] {
+  return (answer?.selectedOptionIds ?? [])
     .map((optionId) => question.options.find((option) => option.id === optionId)?.label)
     .filter((label): label is string => !!label);
-  const trimmedComment = answer.comment.trim();
+}
 
-  if (selectedLabels.length > 0 && trimmedComment.length > 0) {
-    return `${selectedLabels.join(", ")}\n${trimmedComment}`;
+function formatScaleValue(
+  question: ConversationQuestionSummary,
+  numericValue: number,
+): string {
+  const unit = question.range?.unit?.trim();
+  return unit ? `${numericValue} ${unit}` : String(numericValue);
+}
+
+function getScaleValueLabel(
+  question: ConversationQuestionSummary,
+  numericValue: number,
+): string {
+  const baseLabel = formatScaleValue(question, numericValue);
+  const markLabel = question.range?.marks.find((mark) => mark.value === numericValue)?.label?.trim();
+
+  if (!markLabel || markLabel === baseLabel) {
+    return baseLabel;
   }
 
-  if (selectedLabels.length > 0) {
-    return selectedLabels.join(", ");
+  return `${markLabel} - ${baseLabel}`;
+}
+
+function renderReadOnlyAnswer(
+  question: ConversationQuestionSummary,
+  answers: ConversationQuestionAnswerSummary[],
+) {
+  const answer = answers.find((candidate) => candidate.questionId === question.id);
+  const selectedLabels = getSelectedLabels(question, answer);
+  const trimmedComment = answer?.comment.trim() ?? "";
+  const hasComment = trimmedComment.length > 0;
+  const hasSelection = selectedLabels.length > 0;
+  const hasNumericValue = answer?.numericValue !== undefined;
+
+  if (!hasSelection && !hasNumericValue && !hasComment) {
+    return (
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        No response recorded.
+      </p>
+    );
   }
 
-  return trimmedComment || "No response recorded.";
+  return (
+    <div className="space-y-3">
+      {hasSelection ? (
+        <div className="flex flex-wrap gap-2">
+          {selectedLabels.map((label) => (
+            <Badge
+              key={`${question.id}-${label}`}
+              variant={question.type === "multi_select" ? "secondary" : "outline"}
+              className={cn(question.type === "multi_select" && "rounded-md px-2.5 py-1")}
+            >
+              {label}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+
+      {hasNumericValue ? (
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary" className="rounded-md px-2.5 py-1">
+            {getScaleValueLabel(question, answer.numericValue!)}
+          </Badge>
+        </div>
+      ) : null}
+
+      {hasComment ? (
+        <div className="rounded-lg bg-background/80 px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
+          {trimmedComment}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function getQuestionModeMeta(question: ConversationQuestionSummary): {
   badgeLabel: string;
   helperLabel: string;
-  optionShapeClassName: string;
-  indicatorClassName: string;
+  optionShapeClassName?: string;
+  indicatorClassName?: string;
 } {
   if (question.type === "multi_select") {
     return {
@@ -77,6 +143,13 @@ function getQuestionModeMeta(question: ConversationQuestionSummary): {
       helperLabel: "You can select several options.",
       optionShapeClassName: "rounded-lg",
       indicatorClassName: "rounded-[4px]",
+    };
+  }
+
+  if (question.type === "scale") {
+    return {
+      badgeLabel: "Numeric scale",
+      helperLabel: "Move the slider to pick a value, or write your own answer below.",
     };
   }
 
@@ -109,7 +182,7 @@ export function ChatQuestionnaire({
 
   const handleSingleSelect = (questionId: string, optionId: string) => {
     setDrafts((current) => {
-      const previous = current[questionId] ?? { selectedOptionIds: [], comment: "" };
+      const previous = current[questionId] ?? { selectedOptionIds: [], numericValue: undefined, comment: "" };
       const nextSelectedOptionIds =
         previous.selectedOptionIds[0] === optionId ? [] : [optionId];
 
@@ -125,7 +198,7 @@ export function ChatQuestionnaire({
 
   const handleMultiSelect = (questionId: string, optionId: string) => {
     setDrafts((current) => {
-      const previous = current[questionId] ?? { selectedOptionIds: [], comment: "" };
+      const previous = current[questionId] ?? { selectedOptionIds: [], numericValue: undefined, comment: "" };
       const hasOption = previous.selectedOptionIds.includes(optionId);
 
       return {
@@ -140,11 +213,21 @@ export function ChatQuestionnaire({
     });
   };
 
+  const handleScaleChange = (questionId: string, numericValue: number) => {
+    setDrafts((current) => ({
+      ...current,
+      [questionId]: {
+        ...(current[questionId] ?? { selectedOptionIds: [], numericValue: undefined, comment: "" }),
+        numericValue,
+      },
+    }));
+  };
+
   const handleCommentChange = (questionId: string, comment: string) => {
     setDrafts((current) => ({
       ...current,
       [questionId]: {
-        ...(current[questionId] ?? { selectedOptionIds: [], comment: "" }),
+        ...(current[questionId] ?? { selectedOptionIds: [], numericValue: undefined, comment: "" }),
         comment,
       },
     }));
@@ -164,6 +247,7 @@ export function ChatQuestionnaire({
         artifact.questions.map((question) => ({
           questionId: question.id,
           selectedOptionIds: drafts[question.id]?.selectedOptionIds ?? [],
+          numericValue: drafts[question.id]?.numericValue,
           comment: drafts[question.id]?.comment ?? "",
         })),
       );
@@ -236,48 +320,113 @@ export function ChatQuestionnaire({
               </div>
 
               {isReadOnly ? (
-                <div className="rounded-xl bg-muted/40 px-3 py-3 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-                  {renderAnswerSummary(question, artifact.answers)}
+                <div className="rounded-xl bg-muted/40 px-3 py-3">
+                  {renderReadOnlyAnswer(question, artifact.answers)}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {question.options.map((option) => {
-                      const isSelected = draft?.selectedOptionIds.includes(option.id) ?? false;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          aria-pressed={isSelected}
-                          className={cn(
-                            "inline-flex items-center gap-2 border px-3 py-1.5 text-sm transition-colors",
-                            modeMeta.optionShapeClassName,
-                            isSelected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-background hover:bg-accent hover:text-accent-foreground",
-                          )}
-                          disabled={disabled || isSubmitting}
-                          onClick={() =>
-                            question.type === "multi_select"
-                              ? handleMultiSelect(question.id, option.id)
-                              : handleSingleSelect(question.id, option.id)
-                          }
+                  {question.type === "scale" ? (
+                    <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          Selected value
+                        </p>
+                        <Badge
+                          variant={draft?.numericValue !== undefined ? "secondary" : "outline"}
+                          className="rounded-md"
                         >
-                          <span
-                            aria-hidden="true"
+                          {draft?.numericValue !== undefined
+                            ? getScaleValueLabel(question, draft.numericValue)
+                            : "No value selected"}
+                        </Badge>
+                      </div>
+
+                      <Slider
+                        value={[draft?.numericValue ?? question.range!.min]}
+                        min={question.range!.min}
+                        max={question.range!.max}
+                        step={question.range!.step}
+                        disabled={disabled || isSubmitting}
+                        onValueChange={(values) => {
+                          const nextValue = values[0];
+                          if (nextValue !== undefined) {
+                            handleScaleChange(question.id, nextValue);
+                          }
+                        }}
+                      />
+
+                      <div className="grid grid-cols-3 items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatScaleValue(question, question.range!.min)}</span>
+                        <span className="text-center">
+                          Step {question.range!.step}
+                        </span>
+                        <span className="text-right">{formatScaleValue(question, question.range!.max)}</span>
+                      </div>
+
+                      {(question.range?.marks ?? []).length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                            Suggested marks
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {(question.range?.marks ?? []).map((mark) => {
+                              const isActive = draft?.numericValue === mark.value;
+                              return (
+                                <Button
+                                  key={`${question.id}-${mark.value}`}
+                                  type="button"
+                                  size="xs"
+                                  variant={isActive ? "secondary" : "outline"}
+                                  disabled={disabled || isSubmitting}
+                                  onClick={() => handleScaleChange(question.id, mark.value)}
+                                >
+                                  {mark.label ?? formatScaleValue(question, mark.value)}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {question.options.map((option) => {
+                        const isSelected = draft?.selectedOptionIds.includes(option.id) ?? false;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            aria-pressed={isSelected}
                             className={cn(
-                              "size-3 shrink-0 border transition-colors",
-                              modeMeta.indicatorClassName,
+                              "inline-flex items-center gap-2 border px-3 py-1.5 text-sm transition-colors",
+                              modeMeta.optionShapeClassName,
                               isSelected
-                                ? "border-current bg-current/90"
-                                : "border-current/50 bg-transparent",
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background hover:bg-accent hover:text-accent-foreground",
                             )}
-                          />
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                            disabled={disabled || isSubmitting}
+                            onClick={() =>
+                              question.type === "multi_select"
+                                ? handleMultiSelect(question.id, option.id)
+                                : handleSingleSelect(question.id, option.id)
+                            }
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "size-3 shrink-0 border transition-colors",
+                                modeMeta.indicatorClassName,
+                                isSelected
+                                  ? "border-current bg-current/90"
+                                  : "border-current/50 bg-transparent",
+                              )}
+                            />
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -294,7 +443,9 @@ export function ChatQuestionnaire({
 
                   {!answered ? (
                     <p className="text-xs text-amber-700 dark:text-amber-400">
-                      Select at least one option or write a free-text answer.
+                      {question.type === "scale"
+                        ? "Choose a value on the scale or write a free-text answer."
+                        : "Select at least one option or write a free-text answer."}
                     </p>
                   ) : null}
                 </div>

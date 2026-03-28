@@ -49,14 +49,25 @@ interface ConversationQuestionOptionMeta {
 interface ConversationQuestionDefinitionMeta {
   id: string;
   label: string;
-  type: "yes_no" | "single_select" | "multi_select";
+  type: "yes_no" | "single_select" | "multi_select" | "scale";
   description?: string;
   options?: ConversationQuestionOptionMeta[];
+  range?: {
+    min: number;
+    max: number;
+    step: number;
+    unit?: string;
+    marks?: Array<{
+      value: number;
+      label?: string;
+    }>;
+  };
 }
 
 interface ConversationQuestionAnswerMeta {
   questionId: string;
   selectedOptionIds: string[];
+  numericValue?: number;
   comment: string;
 }
 
@@ -107,12 +118,25 @@ function toQuestionDefinitionMeta(
     type: question.type,
     description: question.description,
     options:
-      question.type === "yes_no"
+      question.type === "yes_no" || question.type === "scale"
         ? undefined
         : getQuestionOptions(question).map((option) => ({
             id: option.id,
             label: option.label,
           })),
+    range:
+      question.type === "scale"
+        ? {
+            min: question.range!.min,
+            max: question.range!.max,
+            step: question.range!.step,
+            unit: question.range!.unit,
+            marks: question.range!.marks?.map((mark) => ({
+              value: mark.value,
+              label: mark.label,
+            })),
+          }
+        : undefined,
   };
 }
 
@@ -120,6 +144,7 @@ function toQuestionAnswerMeta(answer: ConversationQuestionAnswer): ConversationQ
   return {
     questionId: answer.questionId,
     selectedOptionIds: answer.selectedOptionIds,
+    numericValue: answer.numericValue,
     comment: answer.comment,
   };
 }
@@ -146,7 +171,11 @@ function fromQuestionDefinitionMeta(
     label: question.label,
     type: question.type,
     description: question.description,
-    options: question.type === "yes_no" ? undefined : question.options,
+    options:
+      question.type === "yes_no" || question.type === "scale"
+        ? undefined
+        : question.options,
+    range: question.type === "scale" ? question.range : undefined,
   };
 }
 
@@ -154,6 +183,7 @@ function fromQuestionAnswerMeta(answer: ConversationQuestionAnswerMeta): Convers
   return {
     questionId: answer.questionId,
     selectedOptionIds: answer.selectedOptionIds,
+    numericValue: answer.numericValue,
     comment: answer.comment,
   };
 }

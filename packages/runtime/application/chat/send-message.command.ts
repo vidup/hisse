@@ -3,6 +3,7 @@ import type { SkillsRepository } from "../../domain/ports/skills.repository.js";
 import type { ConversationsRepository } from "../../domain/ports/conversations.repository.js";
 import type { AgentRuntime, AgentStreamEvent } from "../../domain/ports/agent-runtime.js";
 import {
+  formatQuestionNumericValue,
   getQuestionOptions,
   type ConversationQuestionAnswerInput,
   type QuestionnaireArtifact,
@@ -38,9 +39,20 @@ function formatQuestionnaireResponse(artifact: QuestionnaireArtifact): string {
       .filter((label): label is string => !!label);
 
     lines.push(`- ${question.label}`);
-    lines.push(
-      `  Selection: ${selectedLabels.length > 0 ? selectedLabels.join(", ") : "No option selected"}`,
-    );
+
+    if (question.type === "scale") {
+      lines.push(
+        `  Value: ${
+          answer?.numericValue !== undefined
+            ? formatQuestionNumericValue(question, answer.numericValue)
+            : "No numeric value selected"
+        }`,
+      );
+    } else {
+      lines.push(
+        `  Selection: ${selectedLabels.length > 0 ? selectedLabels.join(", ") : "No option selected"}`,
+      );
+    }
 
     if ((answer?.comment ?? "").length > 0) {
       lines.push(`  Free text: ${answer?.comment}`);

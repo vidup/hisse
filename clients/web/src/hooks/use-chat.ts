@@ -102,6 +102,7 @@ export function useSendMessage() {
                               answers: params.hitlResponse.answers.map((answer) => ({
                                 questionId: answer.questionId,
                                 selectedOptionIds: answer.selectedOptionIds ?? [],
+                                numericValue: answer.numericValue,
                                 comment: answer.comment ?? "",
                               })),
                               answeredAt: new Date().toISOString(),

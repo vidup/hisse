@@ -5,7 +5,7 @@ export type AssistantTurnStatus = "in_progress" | "completed" | "failed";
 export type ConversationPlanStepStatus = "pending" | "in_progress" | "completed";
 export type ConversationArtifactKind = "questionnaire";
 export type ConversationArtifactStatus = "pending" | "answered";
-export type ConversationQuestionType = "yes_no" | "single_select" | "multi_select";
+export type ConversationQuestionType = "yes_no" | "single_select" | "multi_select" | "scale";
 
 const YES_NO_OPTIONS = [
   { id: "yes", label: "Yes" },
@@ -38,17 +38,32 @@ export interface ConversationQuestionOption {
   label: string;
 }
 
+export interface ConversationQuestionScaleMark {
+  value: number;
+  label?: string;
+}
+
+export interface ConversationQuestionScaleRange {
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  marks?: ConversationQuestionScaleMark[];
+}
+
 export interface ConversationQuestionDefinition {
   id: string;
   label: string;
   type: ConversationQuestionType;
   description?: string;
   options?: ConversationQuestionOption[];
+  range?: ConversationQuestionScaleRange;
 }
 
 export interface ConversationQuestionAnswer {
   questionId: string;
   selectedOptionIds: string[];
+  numericValue?: number;
   comment: string;
 }
 
@@ -72,11 +87,19 @@ export interface ConversationQuestionDefinitionInput {
   type: ConversationQuestionType;
   description?: string;
   options?: ConversationQuestionOption[];
+  range?: {
+    min: number;
+    max: number;
+    step?: number;
+    unit?: string;
+    marks?: ConversationQuestionScaleMark[];
+  };
 }
 
 export interface ConversationQuestionAnswerInput {
   questionId: string;
   selectedOptionIds?: string[];
+  numericValue?: number;
   comment?: string;
 }
 
@@ -121,6 +144,68 @@ function assertUniqueIds(values: string[], label: string): void {
   }
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isStepAligned(value: number, min: number, step: number): boolean {
+  const normalized = (value - min) / step;
+  return Math.abs(normalized - Math.round(normalized)) < 1e-9;
+}
+
+function normalizeScaleRange(
+  questionId: string,
+  range: ConversationQuestionDefinitionInput["range"],
+): ConversationQuestionScaleRange {
+  if (!range) {
+    throw new Error(`Question "${questionId}" requires a numeric range.`);
+  }
+
+  if (!isFiniteNumber(range.min) || !isFiniteNumber(range.max)) {
+    throw new Error(`Question "${questionId}" requires finite min and max values.`);
+  }
+
+  if (range.max <= range.min) {
+    throw new Error(`Question "${questionId}" requires max to be greater than min.`);
+  }
+
+  const step = range.step ?? 1;
+  if (!isFiniteNumber(step) || step <= 0) {
+    throw new Error(`Question "${questionId}" requires a positive step.`);
+  }
+
+  const unit = normalizeOptionalText(range.unit);
+  const marks = (range.marks ?? []).map((mark) => {
+    if (!isFiniteNumber(mark.value)) {
+      throw new Error(`Question "${questionId}" has a non-numeric mark value.`);
+    }
+
+    if (mark.value < range.min || mark.value > range.max) {
+      throw new Error(`Question "${questionId}" has a mark outside its range.`);
+    }
+
+    if (!isStepAligned(mark.value, range.min, step)) {
+      throw new Error(`Question "${questionId}" has a mark that does not align with its step.`);
+    }
+
+    return {
+      value: mark.value,
+      label: normalizeOptionalText(mark.label),
+    };
+  });
+
+  const markValues = marks.map((mark) => String(mark.value));
+  assertUniqueIds(markValues, `mark for question "${questionId}"`);
+
+  return {
+    min: range.min,
+    max: range.max,
+    step,
+    unit,
+    marks,
+  };
+}
+
 function normalizeQuestionDefinition(
   question: ConversationQuestionDefinitionInput,
 ): ConversationQuestionDefinition {
@@ -138,7 +223,8 @@ function normalizeQuestionDefinition(
   if (
     question.type !== "yes_no" &&
     question.type !== "single_select" &&
-    question.type !== "multi_select"
+    question.type !== "multi_select" &&
+    question.type !== "scale"
   ) {
     throw new Error(`Question "${id}" has an unsupported type.`);
   }
@@ -151,6 +237,16 @@ function normalizeQuestionDefinition(
       label,
       type: question.type,
       description,
+    };
+  }
+
+  if (question.type === "scale") {
+    return {
+      id,
+      label,
+      type: question.type,
+      description,
+      range: normalizeScaleRange(id, question.range),
     };
   }
 
@@ -198,6 +294,18 @@ export function getQuestionOptions(
   }
 
   return (question.options ?? []).map((option) => ({ ...option }));
+}
+
+export function formatQuestionNumericValue(
+  question: Pick<ConversationQuestionDefinition, "type" | "range">,
+  numericValue: number,
+): string {
+  if (question.type !== "scale") {
+    return String(numericValue);
+  }
+
+  const unit = question.range?.unit?.trim();
+  return unit ? `${numericValue} ${unit}` : String(numericValue);
 }
 
 export function createQuestionnaireArtifact(params: {
@@ -268,8 +376,46 @@ export function answerQuestionnaireArtifact(
     const selectedOptionIds = Array.from(
       new Set((answer.selectedOptionIds ?? []).map((optionId) => optionId.trim()).filter(Boolean)),
     );
+    const numericValue = isFiniteNumber(answer.numericValue) ? answer.numericValue : undefined;
     const comment = answer.comment?.trim() ?? "";
     const allowedOptionIds = new Set(getQuestionOptions(question).map((option) => option.id));
+
+    if (question.type === "scale") {
+      if (selectedOptionIds.length > 0) {
+        throw new Error(`Question "${question.label}" does not accept predefined options.`);
+      }
+
+      if (numericValue !== undefined) {
+        if (!question.range) {
+          throw new Error(`Question "${question.label}" is missing its range configuration.`);
+        }
+
+        if (numericValue < question.range.min || numericValue > question.range.max) {
+          throw new Error(`Question "${question.label}" received a value outside its range.`);
+        }
+
+        if (!isStepAligned(numericValue, question.range.min, question.range.step)) {
+          throw new Error(`Question "${question.label}" received a value that does not match its step.`);
+        }
+      }
+
+      if (numericValue === undefined && comment.length === 0) {
+        throw new Error(
+          `Question "${question.label}" needs a numeric value or a free-text answer.`,
+        );
+      }
+
+      return {
+        questionId: question.id,
+        selectedOptionIds,
+        numericValue,
+        comment,
+      };
+    }
+
+    if (numericValue !== undefined) {
+      throw new Error(`Question "${question.label}" does not accept numeric values.`);
+    }
 
     if (question.type !== "multi_select" && selectedOptionIds.length > 1) {
       throw new Error(`Question "${question.label}" accepts a single selection.`);
@@ -290,6 +436,7 @@ export function answerQuestionnaireArtifact(
     return {
       questionId: question.id,
       selectedOptionIds,
+      numericValue,
       comment,
     };
   });

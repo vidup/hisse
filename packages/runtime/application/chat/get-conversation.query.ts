@@ -27,14 +27,30 @@ function summarizeArtifacts(entry: ConversationEntry) {
               { id: "yes", label: "Yes" },
               { id: "no", label: "No" },
             ]
-          : (question.options ?? []).map((option) => ({
+          : question.type === "scale"
+            ? []
+            : (question.options ?? []).map((option) => ({
               id: option.id,
               label: option.label,
             })),
+      range:
+        question.type === "scale"
+          ? {
+              min: question.range!.min,
+              max: question.range!.max,
+              step: question.range!.step,
+              unit: question.range!.unit,
+              marks: (question.range!.marks ?? []).map((mark) => ({
+                value: mark.value,
+                label: mark.label,
+              })),
+            }
+          : undefined,
     })),
     answers: artifact.answers.map((answer) => ({
       questionId: answer.questionId,
       selectedOptionIds: answer.selectedOptionIds,
+      numericValue: answer.numericValue,
       comment: answer.comment,
     })),
     createdAt: artifact.createdAt.toISOString(),
