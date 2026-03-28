@@ -1,4 +1,9 @@
-import type { ConversationActivity, ConversationPlan, ConversationPlanStepStatus } from "../model/message.js";
+import type {
+  ConversationActivity,
+  ConversationArtifact,
+  ConversationPlan,
+  ConversationPlanStepStatus,
+} from "../model/message.js";
 
 export type AgentStreamEvent =
   | { type: "text_delta"; content: string }
@@ -6,6 +11,7 @@ export type AgentStreamEvent =
   | { type: "activity_update"; activity: ConversationActivity }
   | { type: "activity_end"; activity: ConversationActivity }
   | { type: "plan_update"; plan: ConversationPlan }
+  | { type: "artifact_update"; artifact: ConversationArtifact }
   | { type: "done"; fullContent: string }
   | { type: "error"; error: string };
 

@@ -2,6 +2,11 @@ import type { AgentsRepository } from "../../domain/ports/agents.repository.js";
 import type { SkillsRepository } from "../../domain/ports/skills.repository.js";
 import type { ConversationsRepository } from "../../domain/ports/conversations.repository.js";
 import type { AgentRuntime, AgentStreamEvent } from "../../domain/ports/agent-runtime.js";
+import {
+  getQuestionOptions,
+  type ConversationQuestionAnswerInput,
+  type QuestionnaireArtifact,
+} from "../../domain/model/message.js";
 import { parseMentions } from "../../domain/services/parse-input.js";
 import { persistConversationStream } from "./persist-conversation-stream.js";
 import { composeSystemPrompt } from "../prompting/compose-system-prompt.js";
@@ -14,7 +19,35 @@ export class SendMessageCommand {
   constructor(
     public readonly conversationId: string,
     public readonly content: string,
+    public readonly hitlResponse?: {
+      artifactId: string;
+      answers: ConversationQuestionAnswerInput[];
+    },
   ) {}
+}
+
+function formatQuestionnaireResponse(artifact: QuestionnaireArtifact): string {
+  const lines = [
+    artifact.title ? `Structured response: ${artifact.title}` : "Structured response:",
+  ];
+
+  for (const question of artifact.questions) {
+    const answer = artifact.answers.find((candidate) => candidate.questionId === question.id);
+    const selectedLabels = (answer?.selectedOptionIds ?? [])
+      .map((optionId) => getQuestionOptions(question).find((option) => option.id === optionId)?.label)
+      .filter((label): label is string => !!label);
+
+    lines.push(`- ${question.label}`);
+    lines.push(
+      `  Selection: ${selectedLabels.length > 0 ? selectedLabels.join(", ") : "No option selected"}`,
+    );
+
+    if ((answer?.comment ?? "").length > 0) {
+      lines.push(`  Free text: ${answer?.comment}`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export class SendMessageCommandHandler {
@@ -47,9 +80,29 @@ export class SendMessageCommandHandler {
     }
 
     const availableSkills = await getAgentAvailableSkills(agent, this.skillsRepo);
-    const skillInstruction = buildSkillInvocationInstruction(command.content, availableSkills);
+    const answeredArtifact = command.hitlResponse
+      ? conversation.answerQuestionnaire(
+          command.hitlResponse.artifactId,
+          command.hitlResponse.answers,
+        )
+      : undefined;
+    const trimmedContent = command.content.trim();
+    const userMessageContent = answeredArtifact
+      ? [
+          formatQuestionnaireResponse(answeredArtifact),
+          trimmedContent ? `Additional note:\n${trimmedContent}` : undefined,
+        ]
+          .filter((part): part is string => Boolean(part))
+          .join("\n\n")
+      : trimmedContent;
 
-    conversation.addUserTurn(command.content);
+    if (!userMessageContent) {
+      throw new Error("Message content cannot be empty.");
+    }
+
+    const skillInstruction = buildSkillInvocationInstruction(userMessageContent, availableSkills);
+
+    conversation.addUserTurn(userMessageContent);
     await this.conversationsRepo.save(conversation);
 
     const session = await this.agentRuntime.resumeSession({
@@ -62,8 +115,8 @@ export class SendMessageCommandHandler {
     });
 
     const promptContent = skillInstruction
-      ? `${command.content}\n\n[Skill instructions]\n${skillInstruction}`
-      : command.content;
+      ? `${userMessageContent}\n\n[Skill instructions]\n${skillInstruction}`
+      : userMessageContent;
     const source = session.prompt(promptContent);
     const stream = persistConversationStream({
       conversation,

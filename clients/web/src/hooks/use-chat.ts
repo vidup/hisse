@@ -4,8 +4,10 @@ import {
   api,
   type AgentMessageActivitySummary,
   type ChatStreamEvent,
+  type ConversationArtifactSummary,
   type ConversationDetail,
   type ConversationPlanSummary,
+  type HitlResponseInput,
 } from "@/lib/api";
 
 export function useConversations() {
@@ -25,6 +27,7 @@ interface SendMessageParams {
   content: string;
   launchAgentId?: string;
   onConversationCreated?: (conversationId: string) => void;
+  hitlResponse?: HitlResponseInput;
 }
 
 interface SendMessageResult {
@@ -56,6 +59,7 @@ export function useSendMessage() {
   const qc = useQueryClient();
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingActivities, setStreamingActivities] = useState<AgentMessageActivitySummary[]>([]);
+  const [streamingArtifacts, setStreamingArtifacts] = useState<ConversationArtifactSummary[]>([]);
   const [streamingPlan, setStreamingPlan] = useState<ConversationPlanSummary | undefined>();
   const [isStreaming, setIsStreaming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -67,6 +71,7 @@ export function useSendMessage() {
       setIsStreaming(true);
       setStreamingContent("");
       setStreamingActivities([]);
+      setStreamingArtifacts([]);
       setStreamingPlan(undefined);
       setErrorMessage(null);
       setStreamPhase("starting");
@@ -82,12 +87,45 @@ export function useSendMessage() {
       if (conversationQueryKey) {
         qc.setQueryData<ConversationDetail | undefined>(conversationQueryKey, (old) => {
           if (!old) return old;
+          const updatedEntries = params.hitlResponse
+            ? old.entries.map((entry) =>
+                entry.kind !== "assistant_turn"
+                  ? entry
+                  : {
+                      ...entry,
+                      artifacts: entry.artifacts.map((artifact) =>
+                        artifact.id !== params.hitlResponse?.artifactId
+                          ? artifact
+                          : {
+                              ...artifact,
+                              status: "answered" as const,
+                              answers: params.hitlResponse.answers.map((answer) => ({
+                                questionId: answer.questionId,
+                                selectedOptionIds: answer.selectedOptionIds ?? [],
+                                comment: answer.comment ?? "",
+                              })),
+                              answeredAt: new Date().toISOString(),
+                            },
+                      ),
+                    },
+              )
+            : old.entries;
+
           return {
             ...old,
-            entries: [
-              ...old.entries,
-              { kind: "user_turn", text: params.content, timestamp: new Date().toISOString(), activities: [] },
-            ],
+            entries:
+              params.content.trim().length > 0
+                ? [
+                    ...updatedEntries,
+                    {
+                      kind: "user_turn",
+                      text: params.content,
+                      timestamp: new Date().toISOString(),
+                      activities: [],
+                      artifacts: [],
+                    },
+                  ]
+                : updatedEntries,
           };
         });
       }
@@ -130,6 +168,22 @@ export function useSendMessage() {
             setStreamingPlan(event.plan);
             return;
 
+          case "artifact_update":
+            setStreamPhase((current) => (current === "streaming" ? current : "acting"));
+            setStreamingArtifacts((current) => {
+              const nextArtifacts = [...current];
+              const index = nextArtifacts.findIndex((artifact) => artifact.id === event.artifact.id);
+
+              if (index === -1) {
+                nextArtifacts.push(event.artifact);
+              } else {
+                nextArtifacts[index] = event.artifact;
+              }
+
+              return nextArtifacts;
+            });
+            return;
+
           case "done":
             conversationId = event.conversationId;
             agentId = event.agentId;
@@ -152,7 +206,11 @@ export function useSendMessage() {
 
       try {
         if (params.conversationId) {
-          await api.chat.sendMessage(params.conversationId, params.content, { onEvent: handleEvent });
+          await api.chat.sendMessage(
+            params.conversationId,
+            { content: params.content, hitlResponse: params.hitlResponse },
+            { onEvent: handleEvent },
+          );
         } else {
           await api.chat.start(
             { content: params.content, launchAgentId: params.launchAgentId },
@@ -191,6 +249,7 @@ export function useSendMessage() {
         setIsStreaming(false);
         setStreamingContent("");
         setStreamingActivities([]);
+        setStreamingArtifacts([]);
         setStreamingPlan(undefined);
         setStreamPhase("idle");
         setStreamAgentId(undefined);
@@ -207,6 +266,7 @@ export function useSendMessage() {
     send,
     streamingContent,
     streamingActivities,
+    streamingArtifacts,
     streamingPlan,
     isStreaming,
     errorMessage,

@@ -1,12 +1,17 @@
 import { BotIcon, UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { AgentMessageActivitySummary } from "@/lib/api";
+import type {
+  AgentMessageActivitySummary,
+  ConversationArtifactSummary,
+  ConversationQuestionAnswerSummary,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Streamdown } from "streamdown";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
 import "streamdown/styles.css";
+import { ChatQuestionnaire } from "./chat-questionnaire";
 
 const plugins = { code, math, mermaid };
 
@@ -41,14 +46,35 @@ interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   activities?: AgentMessageActivitySummary[];
+  artifacts?: ConversationArtifactSummary[];
   agentName?: string;
   isStreaming?: boolean;
   loadingLabel?: string;
+  disabled?: boolean;
+  onSubmitQuestionnaire?: (
+    artifactId: string,
+    answers: ConversationQuestionAnswerSummary[],
+  ) => Promise<void>;
 }
 
-export function ChatMessage({ role, content, activities = [], agentName, isStreaming, loadingLabel }: ChatMessageProps) {
+export function ChatMessage({
+  role,
+  content,
+  activities = [],
+  artifacts = [],
+  agentName,
+  isStreaming,
+  loadingLabel,
+  disabled,
+  onSubmitQuestionnaire,
+}: ChatMessageProps) {
   const isUser = role === "user";
-  const showLoadingState = !isUser && !!loadingLabel && content.length === 0 && activities.length === 0;
+  const showLoadingState =
+    !isUser &&
+    !!loadingLabel &&
+    content.length === 0 &&
+    activities.length === 0 &&
+    artifacts.length === 0;
 
   if (isUser) {
     return (
@@ -133,7 +159,18 @@ export function ChatMessage({ role, content, activities = [], agentName, isStrea
               </div>
             )}
 
-            {loadingLabel && content.length === 0 && activities.length > 0 && (
+            {artifacts.map((artifact) =>
+              artifact.kind === "questionnaire" ? (
+                <ChatQuestionnaire
+                  key={artifact.id}
+                  artifact={artifact}
+                  disabled={disabled}
+                  onSubmit={onSubmitQuestionnaire}
+                />
+              ) : null,
+            )}
+
+            {loadingLabel && content.length === 0 && (activities.length > 0 || artifacts.length > 0) && (
               <p className="text-xs text-muted-foreground">{loadingLabel}</p>
             )}
           </div>

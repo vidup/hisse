@@ -17,7 +17,12 @@ import type {
   AgentMessage,
   AgentSkillAccess,
 } from "../domain/ports/agent-runtime.js";
-import type { ConversationActivity, ConversationPlan } from "../domain/model/message.js";
+import {
+  createQuestionnaireArtifact,
+  type ConversationActivity,
+  type ConversationPlan,
+  type ConversationQuestionDefinitionInput,
+} from "../domain/model/message.js";
 import { createPiSystemTools } from "./pi-system-tools.js";
 
 export interface CredentialEntry {
@@ -111,6 +116,104 @@ function parsePlan(args: unknown): ConversationPlan | undefined {
     steps,
     updatedAt: new Date(),
   };
+}
+
+function parseQuestionnaireArtifact(toolCallId: string, args: unknown) {
+  if (!args || typeof args !== "object") {
+    return undefined;
+  }
+
+  const candidate = args as {
+    title?: unknown;
+    instructions?: unknown;
+    questions?: unknown;
+  };
+
+  if (!Array.isArray(candidate.questions)) {
+    return undefined;
+  }
+
+  const questions: ConversationQuestionDefinitionInput[] = [];
+
+  for (const question of candidate.questions) {
+    const normalizedQuestion = (() => {
+      if (!question || typeof question !== "object") {
+        return null;
+      }
+
+      const questionCandidate = question as {
+        id?: unknown;
+        label?: unknown;
+        description?: unknown;
+        type?: unknown;
+        options?: unknown;
+      };
+
+      if (
+        typeof questionCandidate.id !== "string" ||
+        typeof questionCandidate.label !== "string" ||
+        (questionCandidate.type !== "yes_no" &&
+          questionCandidate.type !== "single_select" &&
+          questionCandidate.type !== "multi_select")
+      ) {
+        return null;
+      }
+
+      const options = Array.isArray(questionCandidate.options)
+        ? questionCandidate.options
+            .map((option) => {
+              if (!option || typeof option !== "object") {
+                return null;
+              }
+
+              const optionCandidate = option as { id?: unknown; label?: unknown };
+              if (
+                typeof optionCandidate.id !== "string" ||
+                typeof optionCandidate.label !== "string"
+              ) {
+                return null;
+              }
+
+              return {
+                id: optionCandidate.id,
+                label: optionCandidate.label,
+              };
+            })
+            .filter((option): option is NonNullable<typeof option> => !!option)
+        : undefined;
+
+      return {
+        id: questionCandidate.id,
+        label: questionCandidate.label,
+        description:
+          typeof questionCandidate.description === "string"
+            ? questionCandidate.description
+            : undefined,
+        type: questionCandidate.type,
+        options,
+      } satisfies ConversationQuestionDefinitionInput;
+    })();
+
+    if (normalizedQuestion) {
+      questions.push(normalizedQuestion);
+    }
+  }
+
+  if (questions.length === 0) {
+    return undefined;
+  }
+
+  try {
+    return createQuestionnaireArtifact({
+      id: toolCallId,
+      title: typeof candidate.title === "string" ? candidate.title : undefined,
+      instructions:
+        typeof candidate.instructions === "string" ? candidate.instructions : undefined,
+      questions,
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 export class PiAgentRuntime implements AgentRuntime {
@@ -260,6 +363,14 @@ class PiSessionHandle implements AgentSessionHandle {
           return;
         }
 
+        if (event.toolName === "AskUserQuestions") {
+          const artifact = parseQuestionnaireArtifact(event.toolCallId, event.args);
+          if (artifact) {
+            push({ type: "artifact_update", artifact });
+          }
+          return;
+        }
+
         const activity: ConversationActivity = {
           id: event.toolCallId,
           kind: "tool",
@@ -271,7 +382,7 @@ class PiSessionHandle implements AgentSessionHandle {
         activities.set(activity.id, activity);
         push({ type: "activity_start", activity });
       } else if (event.type === "tool_execution_update") {
-        if (event.toolName === "UpdatePlan") {
+        if (event.toolName === "UpdatePlan" || event.toolName === "AskUserQuestions") {
           return;
         }
 
@@ -280,7 +391,7 @@ class PiSessionHandle implements AgentSessionHandle {
           push({ type: "activity_update", activity: existing });
         }
       } else if (event.type === "tool_execution_end") {
-        if (event.toolName === "UpdatePlan") {
+        if (event.toolName === "UpdatePlan" || event.toolName === "AskUserQuestions") {
           return;
         }
 

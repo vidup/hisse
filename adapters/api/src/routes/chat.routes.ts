@@ -33,6 +33,44 @@ type ChatStreamChunk =
         updatedAt: string;
       };
     }
+  | {
+      type: "artifact_update";
+      artifact: {
+        id: string;
+        kind: "questionnaire";
+        title?: string;
+        instructions?: string;
+        status: "pending" | "answered";
+        questions: Array<{
+          id: string;
+          label: string;
+          description?: string;
+          type: "yes_no" | "single_select" | "multi_select" | "scale";
+          options: Array<{
+            id: string;
+            label: string;
+          }>;
+          range?: {
+            min: number;
+            max: number;
+            step: number;
+            unit?: string;
+            marks: Array<{
+              value: number;
+              label?: string;
+            }>;
+          };
+        }>;
+        answers: Array<{
+          questionId: string;
+          selectedOptionIds: string[];
+          numericValue?: number;
+          comment: string;
+        }>;
+        createdAt: string;
+        answeredAt?: string;
+      };
+    }
   | { type: "done"; conversationId: string; agentId: string; fullContent: string }
   | { type: "error"; conversationId: string; agentId: string; error: string };
 
@@ -80,6 +118,44 @@ async function pipeChatStream(params: {
           updatedAt: Date;
         };
       }
+    | {
+        type: "artifact_update";
+        artifact: {
+          id: string;
+          kind: "questionnaire";
+          title?: string;
+          instructions?: string;
+          status: "pending" | "answered";
+          questions: Array<{
+            id: string;
+            label: string;
+            description?: string;
+            type: "yes_no" | "single_select" | "multi_select" | "scale";
+            options?: Array<{
+              id: string;
+              label: string;
+            }>;
+            range?: {
+              min: number;
+              max: number;
+              step: number;
+              unit?: string;
+              marks?: Array<{
+                value: number;
+                label?: string;
+              }>;
+            };
+          }>;
+          answers: Array<{
+            questionId: string;
+            selectedOptionIds: string[];
+            numericValue?: number;
+            comment: string;
+          }>;
+          createdAt: Date;
+          answeredAt?: Date;
+        };
+      }
     | { type: "done"; fullContent: string }
     | { type: "error"; error: string }
   >;
@@ -120,6 +196,59 @@ async function pipeChatStream(params: {
               status: step.status,
             })),
             updatedAt: event.plan.updatedAt.toISOString(),
+          },
+        });
+        continue;
+      }
+
+      if (event.type === "artifact_update") {
+        writeStreamChunk(params.reply, {
+          type: "artifact_update",
+          artifact: {
+            id: event.artifact.id,
+            kind: event.artifact.kind,
+            title: event.artifact.title,
+            instructions: event.artifact.instructions,
+            status: event.artifact.status,
+            questions: event.artifact.questions.map((question) => ({
+              id: question.id,
+              label: question.label,
+              description: question.description,
+              type: question.type,
+              options:
+                question.type === "yes_no"
+                  ? [
+                      { id: "yes", label: "Yes" },
+                      { id: "no", label: "No" },
+                    ]
+                  : question.type === "scale"
+                    ? []
+                    : (question.options ?? []).map((option) => ({
+                      id: option.id,
+                      label: option.label,
+                    })),
+              range:
+                question.type === "scale"
+                  ? {
+                      min: question.range!.min,
+                      max: question.range!.max,
+                      step: question.range!.step,
+                      unit: question.range!.unit,
+                      marks: (question.range!.marks ?? []).map((mark) => ({
+                        value: mark.value,
+                        label: mark.label,
+                      })),
+                    }
+                  : undefined,
+            })),
+            answers: event.artifact.answers.map((answer) => ({
+              questionId: answer.questionId,
+              selectedOptionIds: answer.selectedOptionIds,
+              numericValue: answer.numericValue,
+              comment: answer.comment,
+            })),
+            createdAt: event.artifact.createdAt.toISOString(),
+            answeredAt: event.artifact.answeredAt?.toISOString(),
           },
         });
         continue;
@@ -206,16 +335,32 @@ export function registerChatRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post<{ Params: { id: string }; Body: { content: string } }>(
+  app.post<{
+    Params: { id: string };
+    Body: {
+      content?: string;
+      hitlResponse?: {
+        artifactId: string;
+        answers: Array<{
+          questionId: string;
+          selectedOptionIds?: string[];
+          numericValue?: number;
+          comment?: string;
+        }>;
+      };
+    };
+  }>(
     "/api/conversations/:id/messages",
     async (request, reply) => {
       const workspacePath = getWorkspaceFromRequest(request);
       const handlers = await createHandlers(workspacePath);
       const { id } = request.params;
-      const { content } = request.body;
+      const { content = "", hitlResponse } = request.body;
 
       try {
-        const result = await handlers.sendMessage.execute(new SendMessageCommand(id, content));
+        const result = await handlers.sendMessage.execute(
+          new SendMessageCommand(id, content, hitlResponse),
+        );
         await pipeChatStream({
           reply,
           conversationId: result.conversationId,

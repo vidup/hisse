@@ -244,6 +244,7 @@ export interface ConversationEntrySummary {
   timestamp: string;
   activities: AgentMessageActivitySummary[];
   plan?: ConversationPlanSummary;
+  artifacts: ConversationArtifactSummary[];
 }
 
 export interface AgentMessageActivitySummary {
@@ -267,6 +268,39 @@ export interface ConversationPlanSummary {
   updatedAt: string;
 }
 
+export interface ConversationQuestionOptionSummary {
+  id: string;
+  label: string;
+}
+
+export interface ConversationQuestionSummary {
+  id: string;
+  label: string;
+  description?: string;
+  type: "yes_no" | "single_select" | "multi_select";
+  options: ConversationQuestionOptionSummary[];
+}
+
+export interface ConversationQuestionAnswerSummary {
+  questionId: string;
+  selectedOptionIds: string[];
+  comment: string;
+}
+
+export interface QuestionnaireArtifactSummary {
+  id: string;
+  kind: "questionnaire";
+  title?: string;
+  instructions?: string;
+  status: "pending" | "answered";
+  questions: ConversationQuestionSummary[];
+  answers: ConversationQuestionAnswerSummary[];
+  createdAt: string;
+  answeredAt?: string;
+}
+
+export type ConversationArtifactSummary = QuestionnaireArtifactSummary;
+
 export interface ConversationDetail extends ConversationSummary {
   entries: ConversationEntrySummary[];
 }
@@ -288,8 +322,18 @@ export type ChatStreamEvent =
   | { type: "activity_update"; activity: ChatStreamActivity }
   | { type: "activity_end"; activity: ChatStreamActivity }
   | { type: "plan_update"; plan: ConversationPlanSummary }
+  | { type: "artifact_update"; artifact: ConversationArtifactSummary }
   | { type: "done"; conversationId: string; agentId: string; fullContent: string }
   | { type: "error"; conversationId: string; agentId: string; error: string };
+
+export interface HitlResponseInput {
+  artifactId: string;
+  answers: Array<{
+    questionId: string;
+    selectedOptionIds?: string[];
+    comment?: string;
+  }>;
+}
 
 interface ChatStreamOptions {
   onEvent: (event: ChatStreamEvent) => void;
@@ -452,7 +496,10 @@ export const api = {
     getById: (id: string) => get<ConversationDetail>(`/api/conversations/${id}`),
     start: (body: { content: string; launchAgentId?: string }, options: ChatStreamOptions) =>
       streamChat("/api/conversations", body, options),
-    sendMessage: (id: string, content: string, options: ChatStreamOptions) =>
-      streamChat(`/api/conversations/${id}/messages`, { content }, options),
+    sendMessage: (
+      id: string,
+      body: { content?: string; hitlResponse?: HitlResponseInput },
+      options: ChatStreamOptions,
+    ) => streamChat(`/api/conversations/${id}/messages`, body, options),
   },
 };

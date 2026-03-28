@@ -11,6 +11,7 @@ import {
   useUpdateWorkspaceChatSettings,
   useWorkspaceChatSettings,
 } from "@/hooks/use-workspace-chat-settings";
+import type { ConversationQuestionAnswerSummary } from "@/lib/api";
 import { ChatInput } from "./chat-input";
 import { ChatMessage } from "./chat-message";
 import { ChatWorkspacePanel } from "./chat-workspace-panel";
@@ -29,6 +30,7 @@ export function ChatPage() {
     send,
     streamingContent,
     streamingActivities,
+    streamingArtifacts,
     streamingPlan,
     isStreaming,
     errorMessage,
@@ -158,6 +160,32 @@ export function ChatPage() {
     [conversationId, launchAgentId, navigate, send],
   );
 
+  const handleSubmitQuestionnaire = useCallback(
+    async (artifactId: string, answers: ConversationQuestionAnswerSummary[]) => {
+      if (!conversationId) {
+        throw new Error("Questionnaires can only be answered inside an active conversation.");
+      }
+
+      const result = await send({
+        conversationId,
+        content: "",
+        hitlResponse: {
+          artifactId,
+          answers,
+        },
+      });
+
+      if (!result) {
+        throw new Error("Unable to submit the structured response.");
+      }
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+    },
+    [conversationId, send],
+  );
+
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
@@ -239,7 +267,10 @@ export function ChatPage() {
                 role={entry.kind === "user_turn" ? "user" : "assistant"}
                 content={entry.text}
                 activities={entry.activities}
+                artifacts={entry.artifacts}
                 agentName={entry.kind === "assistant_turn" ? agentName : undefined}
+                disabled={isStreaming}
+                onSubmitQuestionnaire={handleSubmitQuestionnaire}
               />
             ))}
 
@@ -248,9 +279,11 @@ export function ChatPage() {
                 role="assistant"
                 content={streamingContent}
                 activities={streamingActivities}
+                artifacts={streamingArtifacts}
                 agentName={streamingAgentName}
                 isStreaming
                 loadingLabel={loadingLabel}
+                disabled
               />
             )}
           </div>

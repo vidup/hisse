@@ -16,8 +16,18 @@ export type {
   ConversationActivity,
   ConversationActivityKind,
   ConversationActivityStatus,
+  ConversationArtifact,
+  ConversationArtifactKind,
+  ConversationArtifactStatus,
   ConversationEntry,
   ConversationEntryId,
+  ConversationQuestionAnswer,
+  ConversationQuestionAnswerInput,
+  ConversationQuestionDefinition,
+  ConversationQuestionDefinitionInput,
+  ConversationQuestionOption,
+  ConversationQuestionType,
+  QuestionnaireArtifact,
   UserTurnEntry,
 } from "./domain/model/message.js";
 

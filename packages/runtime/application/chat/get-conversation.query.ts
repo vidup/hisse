@@ -1,7 +1,45 @@
 import type { ConversationsRepository } from "../../domain/ports/conversations.repository.js";
+import type { ConversationEntry } from "../../domain/model/message.js";
 
 export class GetConversationQuery {
   constructor(public readonly conversationId: string) {}
+}
+
+function summarizeArtifacts(entry: ConversationEntry) {
+  if (entry.kind !== "assistant_turn") {
+    return [];
+  }
+
+  return entry.artifacts.map((artifact) => ({
+    id: artifact.id,
+    kind: artifact.kind,
+    title: artifact.title,
+    instructions: artifact.instructions,
+    status: artifact.status,
+    questions: artifact.questions.map((question) => ({
+      id: question.id,
+      label: question.label,
+      description: question.description,
+      type: question.type,
+      options:
+        question.type === "yes_no"
+          ? [
+              { id: "yes", label: "Yes" },
+              { id: "no", label: "No" },
+            ]
+          : (question.options ?? []).map((option) => ({
+              id: option.id,
+              label: option.label,
+            })),
+    })),
+    answers: artifact.answers.map((answer) => ({
+      questionId: answer.questionId,
+      selectedOptionIds: answer.selectedOptionIds,
+      comment: answer.comment,
+    })),
+    createdAt: artifact.createdAt.toISOString(),
+    answeredAt: artifact.answeredAt?.toISOString(),
+  }));
 }
 
 export class GetConversationQueryHandler {
@@ -46,6 +84,7 @@ export class GetConversationQueryHandler {
               updatedAt: entry.plan.updatedAt.toISOString(),
             }
           : undefined,
+        artifacts: summarizeArtifacts(entry),
       })),
     };
   }

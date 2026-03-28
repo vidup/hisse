@@ -10,6 +10,7 @@ import {
   createWriteToolDefinition,
   type ToolDefinition,
 } from "@mariozechner/pi-coding-agent";
+import { createQuestionnaireArtifact } from "../domain/model/message.js";
 import type { AgentPlanStepInput, AgentSkillAccess } from "../domain/ports/agent-runtime.js";
 
 type AnyToolDefinition = ToolDefinition<any, any, any>;
@@ -110,10 +111,44 @@ const updatePlanSchema = Type.Object({
   ),
 });
 
+const askUserQuestionsSchema = Type.Object({
+  title: Type.Optional(
+    Type.String({ description: "Optional short title shown above the bundled questions" }),
+  ),
+  instructions: Type.Optional(
+    Type.String({ description: "Optional short instruction text shown before the questions" }),
+  ),
+  questions: Type.Array(
+    Type.Object({
+      id: Type.String({ description: "Stable question identifier within this bundle" }),
+      label: Type.String({ description: "User-facing question label" }),
+      description: Type.Optional(
+        Type.String({ description: "Optional short detail that clarifies what is being asked" }),
+      ),
+      type: Type.Union([
+        Type.Literal("yes_no"),
+        Type.Literal("single_select"),
+        Type.Literal("multi_select"),
+      ]),
+      options: Type.Optional(
+        Type.Array(
+          Type.Object({
+            id: Type.String({ description: "Stable option identifier within the question" }),
+            label: Type.String({ description: "User-facing option label" }),
+          }),
+          { minItems: 2, maxItems: 10 },
+        ),
+      ),
+    }),
+    { minItems: 1, maxItems: 6 },
+  ),
+});
+
 type AppendToolInput = Static<typeof appendSchema>;
 type ReadAgentSkillToolInput = Static<typeof readAgentSkillSchema>;
 type ReadAgentSkillFileToolInput = Static<typeof readAgentSkillFileSchema>;
 type UpdatePlanToolInput = Static<typeof updatePlanSchema>;
+type AskUserQuestionsToolInput = Static<typeof askUserQuestionsSchema>;
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -373,6 +408,35 @@ function createUpdatePlanToolDefinition(): ToolDefinition<typeof updatePlanSchem
   };
 }
 
+function createAskUserQuestionsToolDefinition(): ToolDefinition<typeof askUserQuestionsSchema> {
+  return {
+    name: "AskUserQuestions",
+    label: "Ask user questions",
+    description: "Request a structured user questionnaire with up to 6 bundled questions.",
+    promptSnippet: "Ask the user for structured input through the Hisse questionnaire UI",
+    promptGuidelines: [
+      "Use this when structured user input will unblock the work more clearly than free-form prose.",
+      "Bundle related questions into one call when possible.",
+      "Supported question types are yes_no, single_select, and multi_select.",
+      "Do not add your own fallback free-text field. The UI already provides one automatically for every question.",
+    ],
+    parameters: askUserQuestionsSchema,
+    async execute(_toolCallId, params: AskUserQuestionsToolInput) {
+      createQuestionnaireArtifact({
+        title: params.title,
+        instructions: params.instructions,
+        questions: params.questions,
+      });
+
+      const lines = params.questions.map((question) => `- [${question.type}] ${question.label}`);
+      return {
+        content: [{ type: "text", text: `Requested structured user input:\n${lines.join("\n")}` }],
+        details: undefined,
+      };
+    },
+  };
+}
+
 export function createPiSystemTools(
   rootDir: string,
   skillsBaseDir: string,
@@ -389,6 +453,7 @@ export function createPiSystemTools(
   const readAgentSkill = createReadAgentSkillToolDefinition(skillsBaseDir, skills);
   const readAgentSkillFile = createReadAgentSkillFileToolDefinition(skillsBaseDir, skills);
   const updatePlan = createUpdatePlanToolDefinition();
+  const askUserQuestions = createAskUserQuestionsToolDefinition();
 
   return [
     read,
@@ -402,5 +467,6 @@ export function createPiSystemTools(
     readAgentSkill,
     readAgentSkillFile,
     updatePlan,
+    askUserQuestions,
   ];
 }

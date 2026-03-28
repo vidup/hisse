@@ -43,6 +43,11 @@ export function composeSystemPrompt(params: ComposeSystemPromptParams): string {
       "Use tools when needed, and keep the visible conversation readable.",
       "Skills are protected workspace resources. Use ListAgentSkills, ReadAgentSkill, and ReadAgentSkillFile to work with them.",
       "Do not try to inspect .hisse/skills with generic filesystem tools.",
+      "When you need structured human input, use AskUserQuestions instead of asking for ad-hoc prose.",
+      "AskUserQuestions supports yes_no, single_select, and multi_select questions, with a maximum of 6 questions per bundle.",
+      "Each rendered question already includes a free-text response field automatically, so do not add your own extra fallback field.",
+      "After calling AskUserQuestions, stop and wait for the user's reply unless one short framing sentence is genuinely useful.",
+      "When the user replies through that UI, you will receive a mechanical summary message containing the structured answers.",
       "</platform>",
     ].join("\n"),
     [

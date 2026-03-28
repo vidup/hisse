@@ -2,10 +2,14 @@ import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { Conversation, type ConversationId } from "../domain/model/conversation.js";
 import {
+  getQuestionOptions,
   rehydrateConversationEntry,
   type AssistantTurnStatus,
   type ConversationActivity,
+  type ConversationArtifact,
   type ConversationPlan,
+  type ConversationQuestionAnswer,
+  type ConversationQuestionDefinition,
   type ConversationEntry,
 } from "../domain/model/message.js";
 import type { ConversationsRepository } from "../domain/ports/conversations.repository.js";
@@ -37,6 +41,37 @@ interface ConversationPlanMeta {
   updatedAt: string;
 }
 
+interface ConversationQuestionOptionMeta {
+  id: string;
+  label: string;
+}
+
+interface ConversationQuestionDefinitionMeta {
+  id: string;
+  label: string;
+  type: "yes_no" | "single_select" | "multi_select";
+  description?: string;
+  options?: ConversationQuestionOptionMeta[];
+}
+
+interface ConversationQuestionAnswerMeta {
+  questionId: string;
+  selectedOptionIds: string[];
+  comment: string;
+}
+
+interface QuestionnaireArtifactMeta {
+  id: string;
+  kind: "questionnaire";
+  title?: string;
+  instructions?: string;
+  status: "pending" | "answered";
+  questions: ConversationQuestionDefinitionMeta[];
+  answers: ConversationQuestionAnswerMeta[];
+  createdAt: string;
+  answeredAt?: string;
+}
+
 type ConversationEntryMeta =
   | {
       id: string;
@@ -60,7 +95,82 @@ type ConversationEntryMeta =
       providerMessageRef?: string;
       activities?: ConversationActivityMeta[];
       plan?: ConversationPlanMeta;
+      artifacts?: QuestionnaireArtifactMeta[];
     };
+
+function toQuestionDefinitionMeta(
+  question: ConversationQuestionDefinition,
+): ConversationQuestionDefinitionMeta {
+  return {
+    id: question.id,
+    label: question.label,
+    type: question.type,
+    description: question.description,
+    options:
+      question.type === "yes_no"
+        ? undefined
+        : getQuestionOptions(question).map((option) => ({
+            id: option.id,
+            label: option.label,
+          })),
+  };
+}
+
+function toQuestionAnswerMeta(answer: ConversationQuestionAnswer): ConversationQuestionAnswerMeta {
+  return {
+    questionId: answer.questionId,
+    selectedOptionIds: answer.selectedOptionIds,
+    comment: answer.comment,
+  };
+}
+
+function toArtifactMeta(artifact: ConversationArtifact): QuestionnaireArtifactMeta {
+  return {
+    id: artifact.id,
+    kind: artifact.kind,
+    title: artifact.title,
+    instructions: artifact.instructions,
+    status: artifact.status,
+    questions: artifact.questions.map(toQuestionDefinitionMeta),
+    answers: artifact.answers.map(toQuestionAnswerMeta),
+    createdAt: artifact.createdAt.toISOString(),
+    answeredAt: artifact.answeredAt?.toISOString(),
+  };
+}
+
+function fromQuestionDefinitionMeta(
+  question: ConversationQuestionDefinitionMeta,
+): ConversationQuestionDefinition {
+  return {
+    id: question.id,
+    label: question.label,
+    type: question.type,
+    description: question.description,
+    options: question.type === "yes_no" ? undefined : question.options,
+  };
+}
+
+function fromQuestionAnswerMeta(answer: ConversationQuestionAnswerMeta): ConversationQuestionAnswer {
+  return {
+    questionId: answer.questionId,
+    selectedOptionIds: answer.selectedOptionIds,
+    comment: answer.comment,
+  };
+}
+
+function fromArtifactMeta(artifact: QuestionnaireArtifactMeta): ConversationArtifact {
+  return {
+    id: artifact.id,
+    kind: artifact.kind,
+    title: artifact.title,
+    instructions: artifact.instructions,
+    status: artifact.status,
+    questions: artifact.questions.map(fromQuestionDefinitionMeta),
+    answers: artifact.answers.map(fromQuestionAnswerMeta),
+    createdAt: new Date(artifact.createdAt),
+    answeredAt: artifact.answeredAt ? new Date(artifact.answeredAt) : undefined,
+  };
+}
 
 export class FsConversationsRepository implements ConversationsRepository {
   constructor(private readonly basePath: string) {}
@@ -122,6 +232,7 @@ export class FsConversationsRepository implements ConversationsRepository {
                       updatedAt: entry.plan.updatedAt.toISOString(),
                     }
                   : undefined,
+                artifacts: entry.artifacts.map(toArtifactMeta),
               } satisfies ConversationEntryMeta,
         ),
       )
@@ -247,6 +358,7 @@ export class FsConversationsRepository implements ConversationsRepository {
                   updatedAt: new Date(meta.plan.updatedAt),
                 } satisfies ConversationPlan
               : undefined,
+            artifacts: (meta.artifacts ?? []).map(fromArtifactMeta),
           }),
         );
       } catch {

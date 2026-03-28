@@ -1,7 +1,11 @@
 import type { ConversationsRepository } from "../../domain/ports/conversations.repository.js";
 import type { AgentStreamEvent } from "../../domain/ports/agent-runtime.js";
 import { Conversation } from "../../domain/model/conversation.js";
-import type { ConversationActivity, ConversationPlan } from "../../domain/model/message.js";
+import type {
+  ConversationActivity,
+  ConversationArtifact,
+  ConversationPlan,
+} from "../../domain/model/message.js";
 
 function finalizeActivities(
   activities: Iterable<ConversationActivity>,
@@ -30,6 +34,7 @@ export async function* persistConversationStream(params: {
   let assistantContent = "";
   let finalized = false;
   const activities = new Map<string, ConversationActivity>();
+  const artifacts = new Map<string, ConversationArtifact>();
   let latestPlan: ConversationPlan | undefined;
 
   for await (const event of params.source) {
@@ -51,12 +56,19 @@ export async function* persistConversationStream(params: {
       continue;
     }
 
+    if (event.type === "artifact_update") {
+      artifacts.set(event.artifact.id, event.artifact);
+      yield event;
+      continue;
+    }
+
     if (event.type === "error") {
       params.conversation.addFailedAssistantTurn(
         assistantContent,
         event.error,
         finalizeActivities(activities.values(), "failed"),
         latestPlan,
+        Array.from(artifacts.values()),
       );
       await params.conversationsRepo.save(params.conversation);
       finalized = true;
@@ -70,6 +82,7 @@ export async function* persistConversationStream(params: {
         finalContent,
         finalizeActivities(activities.values()),
         latestPlan,
+        Array.from(artifacts.values()),
       );
       await params.conversationsRepo.save(params.conversation);
       finalized = true;
@@ -83,6 +96,7 @@ export async function* persistConversationStream(params: {
       "Assistant stream ended unexpectedly.",
       finalizeActivities(activities.values(), "failed"),
       latestPlan,
+      Array.from(artifacts.values()),
     );
     await params.conversationsRepo.save(params.conversation);
   }

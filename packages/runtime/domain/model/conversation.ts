@@ -1,11 +1,15 @@
 import type { AgentId } from "./agent.js";
 import {
+  answerQuestionnaireArtifact,
   createAssistantTurnEntry,
   createUserTurnEntry,
   type AssistantTurnEntry,
   type ConversationActivity,
+  type ConversationArtifact,
   type ConversationPlan,
+  type ConversationQuestionAnswerInput,
   type ConversationEntry,
+  type QuestionnaireArtifact,
   type UserTurnEntry,
 } from "./message.js";
 
@@ -55,6 +59,7 @@ export class Conversation {
     text: string,
     activities: ConversationActivity[] = [],
     plan?: ConversationPlan,
+    artifacts: ConversationArtifact[] = [],
   ): AssistantTurnEntry {
     const entry = createAssistantTurnEntry({
       conversationId: this.id,
@@ -63,6 +68,7 @@ export class Conversation {
       status: "completed",
       activities,
       plan,
+      artifacts,
     });
     this._entries.push(entry);
     this.touch();
@@ -74,6 +80,7 @@ export class Conversation {
     error: string,
     activities: ConversationActivity[] = [],
     plan?: ConversationPlan,
+    artifacts: ConversationArtifact[] = [],
   ): AssistantTurnEntry {
     const entry = createAssistantTurnEntry({
       conversationId: this.id,
@@ -83,10 +90,40 @@ export class Conversation {
       error,
       activities,
       plan,
+      artifacts,
     });
     this._entries.push(entry);
     this.touch();
     return entry;
+  }
+
+  answerQuestionnaire(
+    artifactId: string,
+    answers: ConversationQuestionAnswerInput[],
+  ): QuestionnaireArtifact {
+    for (const entry of this._entries) {
+      if (entry.kind !== "assistant_turn") {
+        continue;
+      }
+
+      const artifact = entry.artifacts.find(
+        (candidate): candidate is QuestionnaireArtifact =>
+          candidate.kind === "questionnaire" && candidate.id === artifactId,
+      );
+
+      if (!artifact) {
+        continue;
+      }
+
+      const answeredArtifact = answerQuestionnaireArtifact(artifact, answers);
+      entry.artifacts = entry.artifacts.map((candidate) =>
+        candidate.id === artifactId ? answeredArtifact : candidate,
+      );
+      this.touch();
+      return answeredArtifact;
+    }
+
+    throw new Error(`Questionnaire artifact not found: ${artifactId}`);
   }
 
   static create(params: { title: string; agentId: AgentId }): Conversation {
