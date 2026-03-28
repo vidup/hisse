@@ -23,9 +23,9 @@ function AppLayoutContent() {
   const { currentPath } = useWorkspace();
 
   return (
-    <SidebarInset className="overflow-hidden">
-      <div key={currentPath || "no-workspace"} className="flex h-full overflow-hidden">
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <SidebarInset className="min-h-0 overflow-hidden">
+      <div key={currentPath || "no-workspace"} className="flex h-full min-h-0 overflow-hidden">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Outlet />
         </main>
         <RightPanel />

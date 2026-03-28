@@ -161,6 +161,26 @@ Initial sections:
 - files read
 - external connectors or searches used
 
+#### Optional usage telemetry
+
+The panel can later surface lightweight conversation usage metrics, without making them central to the experience:
+
+- total token usage for the conversation
+- current context usage relative to the active model window
+
+This is useful as ambient information, but should remain secondary to plan, files, and context.
+
+#### Panel ergonomics
+
+The right panel should remain usable even when a conversation becomes tool-heavy or the window height is reduced.
+
+Expected behavior:
+
+- `Plan`, `Working files`, and `Context` should stay visible together
+- sections should share the available height instead of growing indefinitely
+- each section should scroll internally when it contains too many items
+- each section should be collapsible to free space for the others
+
 The right panel should support drill-down views. For example:
 
 - clicking a search activity opens search results

@@ -11,7 +11,6 @@ import {
   useUpdateWorkspaceChatSettings,
   useWorkspaceChatSettings,
 } from "@/hooks/use-workspace-chat-settings";
-import { ChatConversationList } from "./chat-conversation-list";
 import { ChatInput } from "./chat-input";
 import { ChatMessage } from "./chat-message";
 import { ChatWorkspacePanel } from "./chat-workspace-panel";
@@ -65,6 +64,15 @@ export function ChatPage() {
   const launchAgent = launchAgentId
     ? agents?.find((agent) => agent.id === launchAgentId)
     : undefined;
+  const activeSkillContextAgent = isNewConversationView
+    ? launchAgent
+    : conversation?.agentId
+      ? agents?.find((agent) => agent.id === conversation.agentId)
+      : undefined;
+  const preferredSkillIds = activeSkillContextAgent?.skills.map((skill) => skill.id) ?? [];
+  const preferredSkillLabel = activeSkillContextAgent?.name
+    ? `From ${activeSkillContextAgent.name}`
+    : "From this agent";
   const launchQuickSkills =
     launchAgent?.skills
       .map((skillRef) => {
@@ -151,12 +159,7 @@ export function ChatPage() {
   );
 
   return (
-    <div className="flex h-full">
-      <div className="w-64 shrink-0">
-        <ChatConversationList activeId={conversationId} onNewChat={() => navigate("/chat")} />
-      </div>
-
-      <div className="relative flex flex-1 flex-col" style={{ height: "100vh" }}>
+    <div className="relative flex h-full min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
           <MessageSquareIcon className="size-4 text-muted-foreground" />
           <span className="text-sm font-medium">{conversation?.title || "New conversation"}</span>
@@ -166,7 +169,7 @@ export function ChatPage() {
         <div className="flex-1 overflow-y-auto p-4">
           <div className="mx-auto w-full max-w-4xl space-y-6">
             {isNewConversationView && (
-              <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-6 py-20 text-center">
+              <div className="mx-auto flex max-w-4xl flex-col items-center justify-center gap-6 pt-36 pb-20 text-center">
                 <div className="space-y-2">
                   <MessageSquareIcon className="mx-auto size-8 text-muted-foreground" />
                   <p className="text-lg font-medium">Start a new conversation</p>
@@ -174,7 +177,7 @@ export function ChatPage() {
                 </div>
 
                 {hasAgents ? (
-                  <div className="w-full max-w-2xl rounded-2xl border bg-background shadow-sm">
+                  <div className="w-full max-w-3xl rounded-2xl border bg-background shadow-sm">
                     <div className="flex items-center justify-between gap-3 border-b px-4 py-3 text-left">
                       <div className="space-y-1">
                         <div className="text-sm font-medium">
@@ -211,6 +214,8 @@ export function ChatPage() {
                       launchAgentId={launchAgentId || undefined}
                       onLaunchAgentIdChange={setLaunchAgentId}
                       quickSkills={launchQuickSkills}
+                      preferredSkillIds={preferredSkillIds}
+                      preferredSkillLabel={preferredSkillLabel}
                       placeholder={
                         launchAgentName
                           ? `Message ${launchAgentName}...`
@@ -263,10 +268,11 @@ export function ChatPage() {
           <ChatInput
             onSend={handleSend}
             disabled={isStreaming}
+            preferredSkillIds={preferredSkillIds}
+            preferredSkillLabel={preferredSkillLabel}
             placeholder={conversationId ? "Type a message..." : "@agent start a conversation..."}
           />
         )}
-      </div>
     </div>
   );
 }

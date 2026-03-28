@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
-
 interface RightPanelContextValue {
   content: ReactNode | null;
   setContent: (content: ReactNode | null) => void;
@@ -27,8 +25,8 @@ export function RightPanel() {
   if (!content) return null;
 
   return (
-    <aside className="hidden w-80 shrink-0 border-l border-border lg:block">
-      <ScrollArea className="h-full p-4">{content}</ScrollArea>
+    <aside className="hidden min-h-0 w-80 shrink-0 overflow-hidden border-l border-border lg:block">
+      <div className="h-full overflow-hidden p-4">{content}</div>
     </aside>
   );
 }
