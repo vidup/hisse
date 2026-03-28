@@ -129,6 +129,7 @@ const askUserQuestionsSchema = Type.Object({
         Type.Literal("yes_no"),
         Type.Literal("single_select"),
         Type.Literal("multi_select"),
+        Type.Literal("scale"),
       ]),
       options: Type.Optional(
         Type.Array(
@@ -138,6 +139,29 @@ const askUserQuestionsSchema = Type.Object({
           }),
           { minItems: 2, maxItems: 10 },
         ),
+      ),
+      range: Type.Optional(
+        Type.Object({
+          min: Type.Number({ description: "Minimum numeric value for a scale question" }),
+          max: Type.Number({ description: "Maximum numeric value for a scale question" }),
+          step: Type.Optional(
+            Type.Number({ description: "Increment between two valid scale values. Defaults to 1." }),
+          ),
+          unit: Type.Optional(
+            Type.String({ description: "Optional unit shown next to numeric values, like days or percent" }),
+          ),
+          marks: Type.Optional(
+            Type.Array(
+              Type.Object({
+                value: Type.Number({ description: "Exact numeric value of this visible mark" }),
+                label: Type.Optional(
+                  Type.String({ description: "Optional short label shown for this mark" }),
+                ),
+              }),
+              { maxItems: 12 },
+            ),
+          ),
+        }),
       ),
     }),
     { minItems: 1, maxItems: 6 },
@@ -417,7 +441,8 @@ function createAskUserQuestionsToolDefinition(): ToolDefinition<typeof askUserQu
     promptGuidelines: [
       "Use this when structured user input will unblock the work more clearly than free-form prose.",
       "Bundle related questions into one call when possible.",
-      "Supported question types are yes_no, single_select, and multi_select.",
+      "Supported question types are yes_no, single_select, multi_select, and scale.",
+      "Scale questions must define a range with min and max values, and can optionally set step, unit, and labeled marks.",
       "Do not add your own fallback free-text field. The UI already provides one automatically for every question.",
     ],
     parameters: askUserQuestionsSchema,
