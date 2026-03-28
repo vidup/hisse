@@ -191,19 +191,45 @@ export interface ConversationSummary {
   updatedAt: string;
 }
 
-export interface AgentMessageSummary {
-  role: "user" | "assistant";
-  content: string;
+export interface ConversationEntrySummary {
+  kind: "user_turn" | "assistant_turn";
+  text: string;
+  status?: "in_progress" | "completed" | "failed";
+  error?: string;
   timestamp: string;
+  activities: AgentMessageActivitySummary[];
+}
+
+export interface AgentMessageActivitySummary {
+  id: string;
+  kind: "tool";
+  name: string;
+  label: string;
+  status: "running" | "completed" | "failed";
+  startedAt: string;
+  completedAt?: string;
 }
 
 export interface ConversationDetail extends ConversationSummary {
-  messages: AgentMessageSummary[];
+  entries: ConversationEntrySummary[];
+}
+
+export interface ChatStreamActivity {
+  id: string;
+  kind: "tool";
+  name: string;
+  label: string;
+  status: "running" | "completed" | "failed";
+  startedAt: string;
+  completedAt?: string;
 }
 
 export type ChatStreamEvent =
   | { type: "meta"; conversationId: string; agentId: string }
   | { type: "delta"; content: string }
+  | { type: "activity_start"; activity: ChatStreamActivity }
+  | { type: "activity_update"; activity: ChatStreamActivity }
+  | { type: "activity_end"; activity: ChatStreamActivity }
   | { type: "done"; conversationId: string; agentId: string; fullContent: string }
   | { type: "error"; conversationId: string; agentId: string; error: string };
 

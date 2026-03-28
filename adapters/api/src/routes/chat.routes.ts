@@ -10,6 +10,18 @@ import { getWorkspaceFromRequest, createHandlers } from "../workspace.js";
 type ChatStreamChunk =
   | { type: "meta"; conversationId: string; agentId: string }
   | { type: "delta"; content: string }
+  | {
+      type: "activity_start" | "activity_update" | "activity_end";
+      activity: {
+        id: string;
+        kind: "tool";
+        name: string;
+        label: string;
+        status: "running" | "completed" | "failed";
+        startedAt: string;
+        completedAt?: string;
+      };
+    }
   | { type: "done"; conversationId: string; agentId: string; fullContent: string }
   | { type: "error"; conversationId: string; agentId: string; error: string };
 
@@ -34,6 +46,18 @@ async function pipeChatStream(params: {
   agentId: string;
   stream: AsyncIterable<
     | { type: "text_delta"; content: string }
+    | {
+        type: "activity_start" | "activity_update" | "activity_end";
+        activity: {
+          id: string;
+          kind: "tool";
+          name: string;
+          label: string;
+          status: "running" | "completed" | "failed";
+          startedAt: Date;
+          completedAt?: Date;
+        };
+      }
     | { type: "done"; fullContent: string }
     | { type: "error"; error: string }
   >;
@@ -52,6 +76,18 @@ async function pipeChatStream(params: {
         continue;
       }
 
+      if (event.type === "activity_start" || event.type === "activity_update" || event.type === "activity_end") {
+        writeStreamChunk(params.reply, {
+          type: event.type,
+          activity: {
+            ...event.activity,
+            startedAt: event.activity.startedAt.toISOString(),
+            completedAt: event.activity.completedAt?.toISOString(),
+          },
+        });
+        continue;
+      }
+
       if (event.type === "done") {
         writeStreamChunk(params.reply, {
           type: "done",
@@ -62,12 +98,17 @@ async function pipeChatStream(params: {
         continue;
       }
 
-      writeStreamChunk(params.reply, {
-        type: "error",
-        conversationId: params.conversationId,
-        agentId: params.agentId,
-        error: event.error,
-      });
+      if (event.type === "error") {
+        writeStreamChunk(params.reply, {
+          type: "error",
+          conversationId: params.conversationId,
+          agentId: params.agentId,
+          error: event.error,
+        });
+      }
+
+      continue;
+
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

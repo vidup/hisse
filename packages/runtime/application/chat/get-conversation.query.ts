@@ -19,10 +19,23 @@ export class GetConversationQueryHandler {
       agentId: conversation.agentId,
       createdAt: conversation.createdAt.toISOString(),
       updatedAt: conversation.updatedAt.toISOString(),
-      messages: conversation.messages.map((message) => ({
-        role: message.role,
-        content: message.contentText,
-        timestamp: (message.completedAt ?? message.createdAt).toISOString(),
+      entries: conversation.entries.map((entry) => ({
+        kind: entry.kind,
+        text: entry.text,
+        status: entry.kind === "assistant_turn" ? entry.status : undefined,
+        error: entry.kind === "assistant_turn" ? entry.error : undefined,
+        timestamp: (entry.completedAt ?? entry.createdAt).toISOString(),
+        activities: entry.kind === "assistant_turn"
+          ? entry.activities.map((activity) => ({
+              id: activity.id,
+              kind: activity.kind,
+              name: activity.name,
+              label: activity.label,
+              status: activity.status,
+              startedAt: activity.startedAt.toISOString(),
+              completedAt: activity.completedAt?.toISOString(),
+            }))
+          : [],
       })),
     };
   }

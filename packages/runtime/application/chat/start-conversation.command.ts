@@ -37,7 +37,7 @@ export class StartConversationCommandHandler {
 
     const title = command.content.replace(/@\w[\w-]*/g, "").trim().slice(0, 60) || `Chat with ${agent.name}`;
     const conversation = Conversation.create({ title, agentId: agent.id });
-    conversation.addUserMessage(command.content);
+    conversation.addUserTurn(command.content);
     await this.conversationsRepo.save(conversation);
 
     const skillNames = parseSkillInvocations(command.content);

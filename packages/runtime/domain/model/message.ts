@@ -1,101 +1,132 @@
-export type MessageId = string;
-export type MessageRole = "user" | "assistant";
-export type MessageStatus = "completed" | "failed";
+export type ConversationEntryId = string;
+export type ConversationActivityKind = "tool";
+export type ConversationActivityStatus = "running" | "completed" | "failed";
+export type AssistantTurnStatus = "in_progress" | "completed" | "failed";
 
-export class Message {
-  constructor(
-    public readonly id: MessageId,
-    public readonly conversationId: string,
-    public readonly role: MessageRole,
-    public readonly sequence: number,
-    public readonly contentText: string,
-    public readonly status: MessageStatus,
-    public readonly createdAt: Date,
-    public readonly completedAt: Date,
-    public readonly error?: string,
-    public readonly providerMessageRef?: string,
-  ) {}
+export interface ConversationActivity {
+  id: string;
+  kind: ConversationActivityKind;
+  name: string;
+  label: string;
+  status: ConversationActivityStatus;
+  startedAt: Date;
+  completedAt?: Date;
+}
 
-  static createUser(params: { conversationId: string; sequence: number; contentText: string }): Message {
-    const now = new Date();
-    return new Message(
-      crypto.randomUUID(),
-      params.conversationId,
-      "user",
-      params.sequence,
-      params.contentText,
-      "completed",
-      now,
-      now,
-    );
+interface BaseConversationEntry {
+  id: ConversationEntryId;
+  conversationId: string;
+  sequence: number;
+  text: string;
+  createdAt: Date;
+  completedAt: Date;
+}
+
+export interface UserTurnEntry extends BaseConversationEntry {
+  kind: "user_turn";
+}
+
+export interface AssistantTurnEntry extends BaseConversationEntry {
+  kind: "assistant_turn";
+  status: AssistantTurnStatus;
+  error?: string;
+  providerMessageRef?: string;
+  activities: ConversationActivity[];
+}
+
+export type ConversationEntry = UserTurnEntry | AssistantTurnEntry;
+
+export function createUserTurnEntry(params: {
+  conversationId: string;
+  sequence: number;
+  text: string;
+}): UserTurnEntry {
+  const now = new Date();
+
+  return {
+    id: crypto.randomUUID(),
+    conversationId: params.conversationId,
+    kind: "user_turn",
+    sequence: params.sequence,
+    text: params.text,
+    createdAt: now,
+    completedAt: now,
+  };
+}
+
+export function createAssistantTurnEntry(params: {
+  conversationId: string;
+  sequence: number;
+  text: string;
+  status: AssistantTurnStatus;
+  error?: string;
+  providerMessageRef?: string;
+  activities?: ConversationActivity[];
+}): AssistantTurnEntry {
+  const now = new Date();
+
+  return {
+    id: crypto.randomUUID(),
+    conversationId: params.conversationId,
+    kind: "assistant_turn",
+    sequence: params.sequence,
+    text: params.text,
+    status: params.status,
+    createdAt: now,
+    completedAt: now,
+    error: params.error,
+    providerMessageRef: params.providerMessageRef,
+    activities: params.activities ?? [],
+  };
+}
+
+export function rehydrateConversationEntry(params:
+  | {
+      id: ConversationEntryId;
+      conversationId: string;
+      kind: "user_turn";
+      sequence: number;
+      text: string;
+      createdAt: Date;
+      completedAt: Date;
+    }
+  | {
+      id: ConversationEntryId;
+      conversationId: string;
+      kind: "assistant_turn";
+      sequence: number;
+      text: string;
+      status: AssistantTurnStatus;
+      createdAt: Date;
+      completedAt: Date;
+      error?: string;
+      providerMessageRef?: string;
+      activities?: ConversationActivity[];
+    }
+): ConversationEntry {
+  if (params.kind === "user_turn") {
+    return {
+      id: params.id,
+      conversationId: params.conversationId,
+      kind: "user_turn",
+      sequence: params.sequence,
+      text: params.text,
+      createdAt: params.createdAt,
+      completedAt: params.completedAt,
+    };
   }
 
-  static createAssistantCompleted(params: {
-    conversationId: string;
-    sequence: number;
-    contentText: string;
-    providerMessageRef?: string;
-  }): Message {
-    const now = new Date();
-    return new Message(
-      crypto.randomUUID(),
-      params.conversationId,
-      "assistant",
-      params.sequence,
-      params.contentText,
-      "completed",
-      now,
-      now,
-      undefined,
-      params.providerMessageRef,
-    );
-  }
-
-  static createAssistantFailed(params: {
-    conversationId: string;
-    sequence: number;
-    contentText: string;
-    error: string;
-    providerMessageRef?: string;
-  }): Message {
-    const now = new Date();
-    return new Message(
-      crypto.randomUUID(),
-      params.conversationId,
-      "assistant",
-      params.sequence,
-      params.contentText,
-      "failed",
-      now,
-      now,
-      params.error,
-      params.providerMessageRef,
-    );
-  }
-
-  static rehydrate(params: {
-    id: MessageId;
-    conversationId: string;
-    role: MessageRole;
-    sequence: number;
-    contentText: string;
-    status: MessageStatus;
-    createdAt: Date;
-    completedAt: Date;
-    error?: string;
-    providerMessageRef?: string;
-  }): Message {
-    return new Message(
-      params.id,
-      params.conversationId,
-      params.role,
-      params.sequence,
-      params.contentText,
-      params.status,
-      params.createdAt,
-      params.completedAt,
-      params.error,
-      params.providerMessageRef,
-    );
-  }
+  return {
+    id: params.id,
+    conversationId: params.conversationId,
+    kind: "assistant_turn",
+    sequence: params.sequence,
+    text: params.text,
+    status: params.status,
+    createdAt: params.createdAt,
+    completedAt: params.completedAt,
+    error: params.error,
+    providerMessageRef: params.providerMessageRef,
+    activities: params.activities ?? [],
+  };
 }

@@ -13,7 +13,7 @@ export function ChatPage() {
   const navigate = useNavigate();
   const { data: conversation } = useConversation(conversationId);
   const { data: agents } = useAgents();
-  const { send, streamingContent, isStreaming, errorMessage, streamPhase, streamAgentId } =
+  const { send, streamingContent, streamingActivities, isStreaming, errorMessage, streamPhase, streamAgentId } =
     useSendMessage();
 
   const agentName = conversation?.agentId
@@ -27,6 +27,8 @@ export function ChatPage() {
       ? "Starting the conversation..."
       : streamPhase === "thinking"
         ? "Analyzing the request and preparing a response..."
+        : streamPhase === "acting"
+          ? "Using workspace tools..."
         : undefined;
 
   const handleSend = useCallback(
@@ -65,12 +67,13 @@ export function ChatPage() {
               </div>
             )}
 
-            {conversation?.messages.map((msg, i) => (
+            {conversation?.entries.map((entry, i) => (
               <ChatMessage
                 key={i}
-                role={msg.role}
-                content={msg.content}
-                agentName={msg.role === "assistant" ? agentName : undefined}
+                role={entry.kind === "user_turn" ? "user" : "assistant"}
+                content={entry.text}
+                activities={entry.activities}
+                agentName={entry.kind === "assistant_turn" ? agentName : undefined}
               />
             ))}
 
@@ -78,6 +81,7 @@ export function ChatPage() {
               <ChatMessage
                 role="assistant"
                 content={streamingContent}
+                activities={streamingActivities}
                 agentName={streamingAgentName}
                 isStreaming
                 loadingLabel={loadingLabel}

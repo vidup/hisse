@@ -1,11 +1,18 @@
 import type { AgentId } from "./agent.js";
-import { Message } from "./message.js";
+import {
+  createAssistantTurnEntry,
+  createUserTurnEntry,
+  type AssistantTurnEntry,
+  type ConversationActivity,
+  type ConversationEntry,
+  type UserTurnEntry,
+} from "./message.js";
 
 export type ConversationId = string;
 
 export class Conversation {
   private newEvents: Array<ConversationEvent> = [];
-  private readonly _messages: Message[];
+  private readonly _entries: ConversationEntry[];
 
   constructor(
     public readonly id: ConversationId,
@@ -13,10 +20,10 @@ export class Conversation {
     public readonly agentId: AgentId,
     public readonly createdAt: Date,
     public updatedAt: Date,
-    messages: Message[] = [],
+    entries: ConversationEntry[] = [],
     private readonly _events: Array<ConversationEvent> = [],
   ) {
-    this._messages = [...messages].sort((a, b) => a.sequence - b.sequence);
+    this._entries = [...entries].sort((a, b) => a.sequence - b.sequence);
     this.newEvents = _events;
   }
 
@@ -24,46 +31,54 @@ export class Conversation {
     return [...this.newEvents];
   }
 
-  get messages(): Message[] {
-    return [...this._messages];
+  get entries(): ConversationEntry[] {
+    return [...this._entries];
   }
 
   touch(): void {
     this.updatedAt = new Date();
   }
 
-  addUserMessage(content: string): Message {
-    const message = Message.createUser({
+  addUserTurn(text: string): UserTurnEntry {
+    const entry = createUserTurnEntry({
       conversationId: this.id,
       sequence: this.nextSequence(),
-      contentText: content,
+      text,
     });
-    this._messages.push(message);
+    this._entries.push(entry);
     this.touch();
-    return message;
+    return entry;
   }
 
-  addCompletedAssistantMessage(content: string): Message {
-    const message = Message.createAssistantCompleted({
+  addCompletedAssistantTurn(text: string, activities: ConversationActivity[] = []): AssistantTurnEntry {
+    const entry = createAssistantTurnEntry({
       conversationId: this.id,
       sequence: this.nextSequence(),
-      contentText: content,
+      text,
+      status: "completed",
+      activities,
     });
-    this._messages.push(message);
+    this._entries.push(entry);
     this.touch();
-    return message;
+    return entry;
   }
 
-  addFailedAssistantMessage(content: string, error: string): Message {
-    const message = Message.createAssistantFailed({
+  addFailedAssistantTurn(
+    text: string,
+    error: string,
+    activities: ConversationActivity[] = [],
+  ): AssistantTurnEntry {
+    const entry = createAssistantTurnEntry({
       conversationId: this.id,
       sequence: this.nextSequence(),
-      contentText: content,
+      text,
+      status: "failed",
       error,
+      activities,
     });
-    this._messages.push(message);
+    this._entries.push(entry);
     this.touch();
-    return message;
+    return entry;
   }
 
   static create(params: { title: string; agentId: AgentId }): Conversation {
@@ -80,7 +95,7 @@ export class Conversation {
     agentId: AgentId;
     createdAt: Date;
     updatedAt: Date;
-    messages?: Message[];
+    entries?: ConversationEntry[];
   }): Conversation {
     return new Conversation(
       params.id,
@@ -88,14 +103,14 @@ export class Conversation {
       params.agentId,
       params.createdAt,
       params.updatedAt,
-      params.messages ?? [],
+      params.entries ?? [],
     );
   }
 
   private nextSequence(): number {
-    return this._messages.length === 0
+    return this._entries.length === 0
       ? 1
-      : Math.max(...this._messages.map((m) => m.sequence)) + 1;
+      : Math.max(...this._entries.map((entry) => entry.sequence)) + 1;
   }
 }
 

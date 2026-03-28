@@ -15,6 +15,7 @@ import type {
   AgentStreamEvent,
   AgentMessage,
 } from "../domain/ports/agent-runtime.js";
+import type { ConversationActivity } from "../domain/model/message.js";
 import { createPiSystemTools } from "./pi-system-tools.js";
 
 export interface CredentialEntry {
@@ -24,6 +25,30 @@ export interface CredentialEntry {
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: string;
+}
+
+function summarizeToolLabel(toolName: string, args: Record<string, unknown> | undefined): string {
+  const path = typeof args?.path === "string" ? args.path : undefined;
+  const pattern = typeof args?.pattern === "string" ? args.pattern : undefined;
+
+  switch (toolName) {
+    case "read":
+      return `Read ${path ?? "file"}`;
+    case "write":
+      return `Write ${path ?? "file"}`;
+    case "append":
+      return `Append ${path ?? "file"}`;
+    case "edit":
+      return `Edit ${path ?? "file"}`;
+    case "ls":
+      return `List ${path ?? "."}`;
+    case "find":
+      return pattern ? `Find ${pattern}${path ? ` in ${path}` : ""}` : `Find in ${path ?? "."}`;
+    case "grep":
+      return pattern ? `Search ${JSON.stringify(pattern)}${path ? ` in ${path}` : ""}` : `Search ${path ?? "."}`;
+    default:
+      return toolName;
+  }
 }
 
 export class PiAgentRuntime implements AgentRuntime {
@@ -130,6 +155,7 @@ class PiSessionHandle implements AgentSessionHandle {
     let fullContent = "";
     let resolveNext: ((event: AgentStreamEvent | null) => void) | null = null;
     const queue: (AgentStreamEvent | null)[] = [];
+    const activities = new Map<string, ConversationActivity>();
     let done = false;
     let failed = false;
 
@@ -140,7 +166,36 @@ class PiSessionHandle implements AgentSessionHandle {
           fullContent += ame.delta;
           push({ type: "text_delta", content: ame.delta });
         }
-      } else if (event.type === "turn_end" || event.type === "agent_end") {
+      } else if (event.type === "tool_execution_start") {
+        const activity: ConversationActivity = {
+          id: event.toolCallId,
+          kind: "tool",
+          name: event.toolName,
+          label: summarizeToolLabel(event.toolName, event.args),
+          status: "running",
+          startedAt: new Date(),
+        };
+        activities.set(activity.id, activity);
+        push({ type: "activity_start", activity });
+      } else if (event.type === "tool_execution_update") {
+        const existing = activities.get(event.toolCallId);
+        if (existing) {
+          push({ type: "activity_update", activity: existing });
+        }
+      } else if (event.type === "tool_execution_end") {
+        const existing = activities.get(event.toolCallId);
+        const activity: ConversationActivity = {
+          id: event.toolCallId,
+          kind: "tool",
+          name: event.toolName,
+          label: existing?.label ?? event.toolName,
+          status: event.isError ? "failed" : "completed",
+          startedAt: existing?.startedAt ?? new Date(),
+          completedAt: new Date(),
+        };
+        activities.set(activity.id, activity);
+        push({ type: "activity_end", activity });
+      } else if (event.type === "agent_end") {
         push(null);
       }
     });
@@ -174,7 +229,7 @@ class PiSessionHandle implements AgentSessionHandle {
         if (event === null) {
           done = true;
           if (!failed) {
-            yield { type: "done", fullContent };
+            yield { type: "done", fullContent: fullContent || this.getLastAssistantText() };
           }
         } else {
           yield event;
@@ -199,6 +254,30 @@ class PiSessionHandle implements AgentSessionHandle {
             : "",
         timestamp: new Date(m.timestamp ?? Date.now()),
       }));
+  }
+
+  private getLastAssistantText(): string {
+    const msgs = this.session.agent?.state?.messages ?? [];
+
+    for (let i = msgs.length - 1; i >= 0; i -= 1) {
+      const message = msgs[i] as any;
+      if (message?.role !== "assistant") {
+        continue;
+      }
+
+      if (typeof message.content === "string") {
+        return message.content;
+      }
+
+      if (Array.isArray(message.content)) {
+        return message.content
+          .filter((content: any) => content.type === "text")
+          .map((content: any) => content.text)
+          .join("");
+      }
+    }
+
+    return "";
   }
 
   destroy(): void { }

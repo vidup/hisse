@@ -1,5 +1,6 @@
 import { BotIcon, UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import type { AgentMessageActivitySummary } from "@/lib/api";
 import { Streamdown } from "streamdown";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
@@ -38,14 +39,15 @@ const components = {
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  activities?: AgentMessageActivitySummary[];
   agentName?: string;
   isStreaming?: boolean;
   loadingLabel?: string;
 }
 
-export function ChatMessage({ role, content, agentName, isStreaming, loadingLabel }: ChatMessageProps) {
+export function ChatMessage({ role, content, activities = [], agentName, isStreaming, loadingLabel }: ChatMessageProps) {
   const isUser = role === "user";
-  const showLoadingState = !isUser && !!loadingLabel && content.length === 0;
+  const showLoadingState = !isUser && !!loadingLabel && content.length === 0 && activities.length === 0;
 
   return (
     <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
@@ -85,9 +87,39 @@ export function ChatMessage({ role, content, agentName, isStreaming, loadingLabe
               </div>
             </div>
           ) : (
-            <Streamdown plugins={plugins} components={components} isAnimating={isStreaming}>
-              {content}
-            </Streamdown>
+            <div className="space-y-3">
+              {content.length > 0 && (
+                <Streamdown plugins={plugins} components={components} isAnimating={isStreaming}>
+                  {content}
+                </Streamdown>
+              )}
+
+              {activities.length > 0 && (
+                <div className="space-y-2 border-t border-border/60 pt-2">
+                  {activities.map((activity) => (
+                    <div key={activity.id} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="truncate text-foreground/80">{activity.label}</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          activity.status === "failed"
+                            ? "border-red-500/40 text-red-700"
+                            : activity.status === "completed"
+                              ? "border-emerald-500/40 text-emerald-700"
+                              : "border-amber-500/40 text-amber-700"
+                        }
+                      >
+                        {activity.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {loadingLabel && content.length === 0 && activities.length > 0 && (
+                <p className="text-xs text-muted-foreground">{loadingLabel}</p>
+              )}
+            </div>
           )}
         </div>
       </div>

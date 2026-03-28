@@ -1,5 +1,10 @@
+import type { ConversationActivity } from "../model/message.js";
+
 export type AgentStreamEvent =
   | { type: "text_delta"; content: string }
+  | { type: "activity_start"; activity: ConversationActivity }
+  | { type: "activity_update"; activity: ConversationActivity }
+  | { type: "activity_end"; activity: ConversationActivity }
   | { type: "done"; fullContent: string }
   | { type: "error"; error: string };
 

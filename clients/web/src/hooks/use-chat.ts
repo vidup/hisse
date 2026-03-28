@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type ChatStreamEvent, type ConversationDetail } from "@/lib/api";
+import { api, type AgentMessageActivitySummary, type ChatStreamEvent, type ConversationDetail } from "@/lib/api";
 
 export function useConversations() {
   return useQuery({ queryKey: ["conversations"], queryFn: api.chat.list });
@@ -27,11 +27,28 @@ interface SendMessageResult {
   error?: string;
 }
 
-export type ChatStreamPhase = "idle" | "starting" | "thinking" | "streaming";
+function upsertActivity(
+  activities: AgentMessageActivitySummary[],
+  nextActivity: AgentMessageActivitySummary,
+): AgentMessageActivitySummary[] {
+  const nextActivities = [...activities];
+  const index = nextActivities.findIndex((activity) => activity.id === nextActivity.id);
+
+  if (index === -1) {
+    nextActivities.push(nextActivity);
+  } else {
+    nextActivities[index] = nextActivity;
+  }
+
+  return nextActivities;
+}
+
+export type ChatStreamPhase = "idle" | "starting" | "thinking" | "acting" | "streaming";
 
 export function useSendMessage() {
   const qc = useQueryClient();
   const [streamingContent, setStreamingContent] = useState("");
+  const [streamingActivities, setStreamingActivities] = useState<AgentMessageActivitySummary[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [streamPhase, setStreamPhase] = useState<ChatStreamPhase>("idle");
@@ -41,6 +58,7 @@ export function useSendMessage() {
     async (params: SendMessageParams): Promise<SendMessageResult | null> => {
       setIsStreaming(true);
       setStreamingContent("");
+      setStreamingActivities([]);
       setErrorMessage(null);
       setStreamPhase("starting");
       setStreamAgentId(undefined);
@@ -57,9 +75,9 @@ export function useSendMessage() {
           if (!old) return old;
           return {
             ...old,
-            messages: [
-              ...old.messages,
-              { role: "user", content: params.content, timestamp: new Date().toISOString() },
+            entries: [
+              ...old.entries,
+              { kind: "user_turn", text: params.content, timestamp: new Date().toISOString(), activities: [] },
             ],
           };
         });
@@ -89,6 +107,13 @@ export function useSendMessage() {
             fullContent += event.content;
             setStreamPhase("streaming");
             setStreamingContent(fullContent);
+            return;
+
+          case "activity_start":
+          case "activity_update":
+          case "activity_end":
+            setStreamPhase((current) => (current === "streaming" ? current : "acting"));
+            setStreamingActivities((current) => upsertActivity(current, event.activity));
             return;
 
           case "done":
@@ -148,6 +173,7 @@ export function useSendMessage() {
       } finally {
         setIsStreaming(false);
         setStreamingContent("");
+        setStreamingActivities([]);
         setStreamPhase("idle");
         setStreamAgentId(undefined);
       }
@@ -159,5 +185,14 @@ export function useSendMessage() {
     setErrorMessage(null);
   }, []);
 
-  return { send, streamingContent, isStreaming, errorMessage, clearError, streamPhase, streamAgentId };
+  return {
+    send,
+    streamingContent,
+    streamingActivities,
+    isStreaming,
+    errorMessage,
+    clearError,
+    streamPhase,
+    streamAgentId,
+  };
 }

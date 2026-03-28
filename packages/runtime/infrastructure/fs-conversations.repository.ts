@@ -1,7 +1,12 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { Conversation, type ConversationId } from "../domain/model/conversation.js";
-import { Message, type MessageRole, type MessageStatus } from "../domain/model/message.js";
+import {
+  rehydrateConversationEntry,
+  type AssistantTurnStatus,
+  type ConversationActivity,
+  type ConversationEntry,
+} from "../domain/model/message.js";
 import type { ConversationsRepository } from "../domain/ports/conversations.repository.js";
 
 interface ConversationMeta {
@@ -12,18 +17,39 @@ interface ConversationMeta {
   updatedAt: string;
 }
 
-interface MessageMeta {
+interface ConversationActivityMeta {
   id: string;
-  conversationId: string;
-  role: MessageRole;
-  sequence: number;
-  contentText: string;
-  status: MessageStatus;
-  createdAt: string;
-  completedAt: string;
-  error?: string;
-  providerMessageRef?: string;
+  kind: ConversationActivity["kind"];
+  name: string;
+  label: string;
+  status: ConversationActivity["status"];
+  startedAt: string;
+  completedAt?: string;
 }
+
+type ConversationEntryMeta =
+  | {
+      id: string;
+      conversationId: string;
+      kind: "user_turn";
+      sequence: number;
+      text: string;
+      createdAt: string;
+      completedAt: string;
+    }
+  | {
+      id: string;
+      conversationId: string;
+      kind: "assistant_turn";
+      sequence: number;
+      text: string;
+      status: AssistantTurnStatus;
+      createdAt: string;
+      completedAt: string;
+      error?: string;
+      providerMessageRef?: string;
+      activities?: ConversationActivityMeta[];
+    };
 
 export class FsConversationsRepository implements ConversationsRepository {
   constructor(private readonly basePath: string) {}
@@ -42,20 +68,41 @@ export class FsConversationsRepository implements ConversationsRepository {
 
     await writeFile(path.join(dir, "conversation.json"), JSON.stringify(meta, null, 2) + "\n", "utf-8");
 
-    const transcript = conversation.messages
-      .map((message) =>
-        JSON.stringify({
-          id: message.id,
-          conversationId: message.conversationId,
-          role: message.role,
-          sequence: message.sequence,
-          contentText: message.contentText,
-          status: message.status,
-          createdAt: message.createdAt.toISOString(),
-          completedAt: message.completedAt.toISOString(),
-          error: message.error,
-          providerMessageRef: message.providerMessageRef,
-        } satisfies MessageMeta),
+    const transcript = conversation.entries
+      .map((entry) =>
+        JSON.stringify(
+          entry.kind === "user_turn"
+            ? {
+                id: entry.id,
+                conversationId: entry.conversationId,
+                kind: entry.kind,
+                sequence: entry.sequence,
+                text: entry.text,
+                createdAt: entry.createdAt.toISOString(),
+                completedAt: entry.completedAt.toISOString(),
+              }
+            : {
+                id: entry.id,
+                conversationId: entry.conversationId,
+                kind: entry.kind,
+                sequence: entry.sequence,
+                text: entry.text,
+                status: entry.status,
+                createdAt: entry.createdAt.toISOString(),
+                completedAt: entry.completedAt.toISOString(),
+                error: entry.error,
+                providerMessageRef: entry.providerMessageRef,
+                activities: entry.activities.map((activity) => ({
+                  id: activity.id,
+                  kind: activity.kind,
+                  name: activity.name,
+                  label: activity.label,
+                  status: activity.status,
+                  startedAt: activity.startedAt.toISOString(),
+                  completedAt: activity.completedAt?.toISOString(),
+                })),
+              } satisfies ConversationEntryMeta,
+        ),
       )
       .join("\n");
 
@@ -71,14 +118,14 @@ export class FsConversationsRepository implements ConversationsRepository {
     try {
       const raw = await readFile(filePath, "utf-8");
       const meta: ConversationMeta = JSON.parse(raw);
-      const messages = await this.readCanonicalMessages(path.join(this.basePath, id));
+      const entries = await this.readCanonicalEntries(path.join(this.basePath, id));
       return Conversation.rehydrate({
         id: meta.id,
         title: meta.title,
         agentId: meta.agentId,
         createdAt: new Date(meta.createdAt),
         updatedAt: new Date(meta.updatedAt),
-        messages,
+        entries,
       });
     } catch {
       return null;
@@ -117,7 +164,7 @@ export class FsConversationsRepository implements ConversationsRepository {
     return conversations.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
 
-  private async readCanonicalMessages(conversationDir: string): Promise<Message[]> {
+  private async readCanonicalEntries(conversationDir: string): Promise<ConversationEntry[]> {
     const transcriptPath = path.join(conversationDir, "transcript.jsonl");
 
     let raw: string;
@@ -127,23 +174,48 @@ export class FsConversationsRepository implements ConversationsRepository {
       return [];
     }
 
-    const messages: Message[] = [];
+    const entries: ConversationEntry[] = [];
     for (const line of raw.split(/\r?\n/)) {
       if (!line.trim()) continue;
+
       try {
-        const meta: MessageMeta = JSON.parse(line);
-        messages.push(
-          Message.rehydrate({
+        const meta: ConversationEntryMeta = JSON.parse(line);
+        if (meta.kind === "user_turn") {
+          entries.push(
+            rehydrateConversationEntry({
+              id: meta.id,
+              conversationId: meta.conversationId,
+              kind: meta.kind,
+              sequence: meta.sequence,
+              text: meta.text,
+              createdAt: new Date(meta.createdAt),
+              completedAt: new Date(meta.completedAt),
+            }),
+          );
+          continue;
+        }
+
+        entries.push(
+          rehydrateConversationEntry({
             id: meta.id,
             conversationId: meta.conversationId,
-            role: meta.role,
+            kind: meta.kind,
             sequence: meta.sequence,
-            contentText: meta.contentText,
+            text: meta.text,
             status: meta.status,
             createdAt: new Date(meta.createdAt),
             completedAt: new Date(meta.completedAt),
             error: meta.error,
             providerMessageRef: meta.providerMessageRef,
+            activities: (meta.activities ?? []).map((activity) => ({
+              id: activity.id,
+              kind: activity.kind,
+              name: activity.name,
+              label: activity.label,
+              status: activity.status,
+              startedAt: new Date(activity.startedAt),
+              completedAt: activity.completedAt ? new Date(activity.completedAt) : undefined,
+            })),
           }),
         );
       } catch {
@@ -151,6 +223,6 @@ export class FsConversationsRepository implements ConversationsRepository {
       }
     }
 
-    return messages.sort((a, b) => a.sequence - b.sequence);
+    return entries.sort((a, b) => a.sequence - b.sequence);
   }
 }

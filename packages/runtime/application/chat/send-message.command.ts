@@ -52,7 +52,7 @@ export class SendMessageCommandHandler {
       }
     }
 
-    conversation.addUserMessage(command.content);
+    conversation.addUserTurn(command.content);
     await this.conversationsRepo.save(conversation);
 
     const session = await this.agentRuntime.resumeSession(conversation.id);
