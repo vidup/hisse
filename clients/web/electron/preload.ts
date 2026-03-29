@@ -5,6 +5,8 @@ interface WorkspaceStateSnapshot {
   recentPaths: string[];
 }
 
+type DesktopEditor = "vscode" | "cursor";
+
 contextBridge.exposeInMainWorld("electron", {
   pickFolder: (defaultPath?: string): Promise<string | null> =>
     ipcRenderer.invoke("dialog:openDirectory", defaultPath),
@@ -16,4 +18,8 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("workspace:change"),
   switchWorkspace: (path: string): Promise<WorkspaceStateSnapshot> =>
     ipcRenderer.invoke("workspace:setCurrent", path),
+  openInEditor: (editor: DesktopEditor, targetPath: string): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke("desktop:openInEditor", editor, targetPath),
+  openInFileManager: (targetPath: string): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke("desktop:openInFileManager", targetPath),
 });

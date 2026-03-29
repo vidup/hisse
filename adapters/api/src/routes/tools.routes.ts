@@ -28,7 +28,7 @@ export function registerToolsRoutes(app: FastifyInstance) {
           // skip non-readable files
         }
       }
-      return { name: request.params.name, files };
+      return { name: request.params.name, codePath: toolDir, files };
     } catch {
       return reply.status(404).send({ error: "Tool not found" });
     }

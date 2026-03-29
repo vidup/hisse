@@ -1,4 +1,5 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { spawn } from "node:child_process";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,8 @@ interface WorkspaceState {
   recentPaths: string[];
 }
 
+type DesktopEditor = "vscode" | "cursor";
+
 function normalizeWorkspacePath(value: unknown): string | null {
   if (typeof value !== "string") return null;
 
@@ -34,6 +37,99 @@ function isExistingDirectory(targetPath: string): boolean {
     return fs.statSync(targetPath).isDirectory();
   } catch {
     return false;
+  }
+}
+
+function isExistingFile(targetPath: string): boolean {
+  try {
+    return fs.statSync(targetPath).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function normalizeTargetPath(targetPath: string): string {
+  const trimmed = targetPath.trim();
+  if (!trimmed) {
+    throw new Error("A target path is required");
+  }
+
+  return path.resolve(trimmed);
+}
+
+function getEditorCandidates(editor: DesktopEditor): string[] {
+  const localAppData = process.env.LOCALAPPDATA ?? "";
+  const programFiles = process.env.ProgramFiles ?? "";
+  const programFilesX86 = process.env["ProgramFiles(x86)"] ?? "";
+
+  if (editor === "vscode") {
+    return [
+      "code",
+      path.join(localAppData, "Programs", "Microsoft VS Code", "Code.exe"),
+      path.join(programFiles, "Microsoft VS Code", "Code.exe"),
+      path.join(programFilesX86, "Microsoft VS Code", "Code.exe"),
+    ];
+  }
+
+  return [
+    "cursor",
+    path.join(localAppData, "Programs", "Cursor", "Cursor.exe"),
+    path.join(localAppData, "Programs", "cursor", "Cursor.exe"),
+    path.join(programFiles, "Cursor", "Cursor.exe"),
+    path.join(programFilesX86, "Cursor", "Cursor.exe"),
+  ];
+}
+
+function isLikelyExecutableCandidate(candidate: string): boolean {
+  return !candidate.includes(path.sep) || isExistingFile(candidate);
+}
+
+function launchDetached(command: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: "ignore",
+      shell: process.platform === "win32",
+    });
+
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
+}
+
+async function openPathInEditor(editor: DesktopEditor, targetPath: string): Promise<void> {
+  const normalizedPath = normalizeTargetPath(targetPath);
+  if (!isExistingDirectory(normalizedPath) && !isExistingFile(normalizedPath)) {
+    throw new Error(`Path does not exist: ${normalizedPath}`);
+  }
+
+  for (const candidate of getEditorCandidates(editor)) {
+    if (!candidate || !isLikelyExecutableCandidate(candidate)) continue;
+
+    try {
+      await launchDetached(candidate, [normalizedPath]);
+      return;
+    } catch {
+      continue;
+    }
+  }
+
+  const editorLabel = editor === "vscode" ? "VS Code" : "Cursor";
+  throw new Error(`${editorLabel} is not available on this machine`);
+}
+
+async function openPathInFileManager(targetPath: string): Promise<void> {
+  const normalizedPath = normalizeTargetPath(targetPath);
+  if (!isExistingDirectory(normalizedPath) && !isExistingFile(normalizedPath)) {
+    throw new Error(`Path does not exist: ${normalizedPath}`);
+  }
+
+  const result = await shell.openPath(normalizedPath);
+  if (result) {
+    throw new Error(result);
   }
 }
 
@@ -189,6 +285,16 @@ ipcMain.handle("workspace:change", async () => {
 
 ipcMain.handle("workspace:setCurrent", async (_event, nextPath: string) => {
   return setCurrentWorkspace(nextPath);
+});
+
+ipcMain.handle("desktop:openInEditor", async (_event, editor: DesktopEditor, targetPath: string) => {
+  await openPathInEditor(editor, targetPath);
+  return { ok: true };
+});
+
+ipcMain.handle("desktop:openInFileManager", async (_event, targetPath: string) => {
+  await openPathInFileManager(targetPath);
+  return { ok: true };
 });
 
 app.on("ready", async () => {

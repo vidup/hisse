@@ -165,6 +165,7 @@ export interface ToolSummary {
 
 export interface ToolDetail {
   name: string;
+  codePath: string;
   files: Record<string, string>;
 }
 
