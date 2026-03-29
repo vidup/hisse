@@ -49,7 +49,7 @@ export function BoardColumn({ stepId, title, kind, tasks }: BoardColumnProps) {
     <div
       ref={ref}
       className={cn(
-        "flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/30 p-3",
+        "flex min-h-0 w-80 shrink-0 flex-col rounded-xl border border-border bg-muted/30 p-3",
         isDragOver && "border-primary/50 bg-primary/5",
       )}
     >
@@ -59,7 +59,7 @@ export function BoardColumn({ stepId, title, kind, tasks }: BoardColumnProps) {
           {tasks.length}
         </Badge>
       </div>
-      <div className="flex flex-1 flex-col gap-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
         {tasks.map((task) => (
           <TaskCard key={task.id} task={task} />
         ))}
