@@ -357,6 +357,85 @@ Hisse veut être :
 
 ---
 
+## Recentrer Le Workflow Sur Le Projet
+
+Une simplification importante consiste a inverser la relation entre projet et workflow.
+
+Au lieu de partir d'un catalogue de workflows obligatoire pour lancer un projet, Hisse peut
+partir d'un principe plus simple :
+
+> un projet porte son workflow en propre.
+
+Autrement dit :
+
+- quand on cree un projet, on definit directement comment ce projet fonctionne,
+- ce workflow vit avec le projet,
+- il peut etre modifie ensuite,
+- et s'il devient utile a reutiliser, on peut alors le publier comme template.
+
+Cela revient a snapshotter le workflow by design, sans couche supplementaire.
+
+Dans ce modele :
+
+- le projet est l'unite de travail centrale,
+- le workflow template devient une couche de reutilisation, pas un prerequis,
+- le catalogue de steps peut exister comme aide ou preset, mais il ne doit pas etre au centre du setup initial.
+
+Le flux naturel devient donc :
+
+1. creer un projet,
+2. definir son workflow local,
+3. executer le travail,
+4. puis eventuellement promouvoir ce workflow en template reutilisable.
+
+Cette inversion simplifie fortement le modele mental, la persistence et l'execution runtime.
+
+---
+
+## Une Infrastructure D'Execution Commune Pour Toutes Les Steps
+
+Une autre direction importante pour la v2 est de ne pas avoir une infrastructure differente
+pour chaque type de step.
+
+Le systeme peut au contraire reposer sur une meme implementation runtime pour toutes les steps :
+
+- entree dans une step,
+- etat courant,
+- historique,
+- output,
+- transitions,
+- reprise,
+- blocage,
+- completion.
+
+La difference entre les steps ne serait pas dans leur cycle de vie bas niveau, mais dans la
+fonction qu'elles executent.
+
+On peut voir cela comme une `stepFunction` branchee sur une infrastructure commune.
+
+Exemples :
+
+- **AgentStep** : la `stepFunction` lance un agent.
+- **HumanStep** : la `stepFunction` declenche un `transportCall`, puis place la step en `waiting_for_input`.
+- **AutomationStep** : la `stepFunction` execute une logique deterministe definie en code, dans un esprit proche d'un node d'automation a la n8n.
+
+Cette approche permet de partager :
+
+- les memes statuts d'execution,
+- la meme mecanique de transition,
+- la meme observabilite,
+- la meme persistence,
+- et le meme moteur d'orchestration.
+
+Autrement dit :
+
+> agent, humain et automation ne sont pas trois infrastructures differentes ; ce sont trois variantes d'une meme machine d'execution.
+
+Cela donne une base plus saine pour introduire ensuite l'automation, plutot que de l'ajouter
+sur un modele encore trop couple a l'existant.
+
+---
+
 ## En pratique
 
 Hisse doit permettre aussi bien :

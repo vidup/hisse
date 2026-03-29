@@ -93,44 +93,44 @@ export interface AgentConfiguration {
   skills: { id: string; name: string }[];
 }
 
-export interface StepSummary {
-  id: string;
-  name: string;
-  description: string;
-  agentId?: string;
-  transports?: Array<{
-    type: string;
-    target: string;
-    configuration: Record<string, unknown>;
-    authenticated: boolean;
-  }>;
+export interface ProjectWorkflowTransportInput {
+  type: string;
+  target: string;
+  configuration: Record<string, unknown>;
+  authenticated: boolean;
 }
 
-export interface TeamSummary {
-  id: string;
+export type ProjectWorkflowStepInput =
+  | {
+      kind: "agent";
+      name: string;
+      description?: string;
+      agentId: string;
+    }
+  | {
+      kind: "human";
+      name: string;
+      description?: string;
+      transports: ProjectWorkflowTransportInput[];
+    };
+
+export interface ProjectCreateInput {
   name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
+  description?: string;
 }
 
-export interface WorkflowSummary {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface WorkflowDetail extends WorkflowSummary {
-  steps: StepSummary[];
+export interface UpdateProjectWorkflowInput {
+  steps: ProjectWorkflowStepInput[];
 }
 
 export interface ProjectSummary {
   id: string;
-  teamId: string;
-  workflowId: string;
   name: string;
+  description: string;
+  workflow: {
+    id: string;
+    stepCount: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -141,21 +141,19 @@ export interface TaskSummary {
   description: string;
   status: "backlog" | "in_progress" | "completed";
   projectId: string;
-  currentStep: { id: string; index: number } | null;
+  currentStep: { id: string } | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ProjectDetail {
   id: string;
-  teamId: string;
-  workflowId: string;
   name: string;
+  description: string;
   createdAt: string;
   updatedAt: string;
   workflow: {
     id: string;
-    name: string;
     steps: Array<{ id: string; name: string; description: string; kind: "agent" | "human"; agentId?: string }>;
   };
 }
@@ -428,55 +426,25 @@ export const api = {
       skills: string[];
     }) => post<{ ok: boolean }>(`/api/workspaces/${w}/agents`, body),
   },
-  steps: {
-    list: () => get<StepSummary[]>("/api/steps"),
-    create: (body: {
-      name: string;
-      description: string;
-      parameters:
-        | { kind: "agent"; agentId: string }
-        | {
-            kind: "human";
-            transports: Array<{
-              type: string;
-              target: string;
-              configuration: Record<string, unknown>;
-              authenticated: boolean;
-            }>;
-          };
-    }) => post<{ ok: boolean }>("/api/steps", body),
-  },
-  teams: {
-    list: () => get<TeamSummary[]>(`/api/workspaces/${w}/teams`),
-    create: (body: { name: string; description: string }) =>
-      post<{ ok: boolean }>(`/api/workspaces/${w}/teams`, body),
-  },
-  workflows: {
-    list: () => get<WorkflowSummary[]>("/api/workflows"),
-    getById: (id: string) => get<WorkflowDetail>(`/api/workflows/${id}`),
-    create: (body: { name: string; description: string }) =>
-      post<{ ok: boolean }>("/api/workflows", body),
-    update: (id: string, body: { steps: string[] }) =>
-      put<{ ok: boolean }>(`/api/workflows/${id}`, body),
-  },
   tools: {
     list: () => get<ToolSummary[]>("/api/tools"),
     getByName: (name: string) => get<ToolDetail>(`/api/tools/${encodeURIComponent(name)}`),
   },
   projects: {
-    listByTeam: (teamId: string) =>
-      get<ProjectSummary[]>(`/api/teams/${teamId}/projects`),
-    create: (teamId: string, body: { name: string; workflowId: string }) =>
-      post<{ ok: boolean }>(`/api/teams/${teamId}/projects`, body),
+    list: () => get<ProjectSummary[]>("/api/projects"),
+    create: (body: ProjectCreateInput) =>
+      post<{ ok: boolean }>("/api/projects", body),
+    updateWorkflow: (projectId: string, body: UpdateProjectWorkflowInput) =>
+      put<{ ok: boolean }>(`/api/projects/${projectId}/workflow`, body),
     getById: (projectId: string) => get<ProjectDetail>(`/api/projects/${projectId}`),
     getTasks: (projectId: string) => get<TaskSummary[]>(`/api/projects/${projectId}/tasks`),
     addTask: (projectId: string, body: { name: string; description: string }) =>
       post<{ ok: boolean }>(`/api/projects/${projectId}/tasks`, body),
   },
   tasks: {
-    start: (taskId: string, body: { stepId: string; stepIndex: number }) =>
+    start: (taskId: string, body: { stepId: string }) =>
       post<{ ok: boolean }>(`/api/tasks/${taskId}/start`, body),
-    move: (taskId: string, body: { stepId: string; stepIndex: number }) =>
+    move: (taskId: string, body: { stepId: string }) =>
       post<{ ok: boolean }>(`/api/tasks/${taskId}/move`, body),
     complete: (taskId: string) =>
       post<{ ok: boolean }>(`/api/tasks/${taskId}/complete`, {}),

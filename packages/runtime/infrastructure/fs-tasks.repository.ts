@@ -1,7 +1,7 @@
-import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Task, TaskId, TaskStatus, TaskCurrentStep } from "../domain/model/task.js";
 import { ProjectId } from "../domain/model/project.js";
+import { Task, TaskCurrentStep, TaskId, TaskStatus } from "../domain/model/task.js";
 import type { TasksRepository } from "../domain/ports/tasks.repository.js";
 
 interface TaskRecord {
@@ -10,7 +10,7 @@ interface TaskRecord {
   description: string;
   status: TaskStatus;
   projectId: string;
-  currentStep: { id: string; index: number } | null;
+  currentStep: { id: string } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,7 +20,7 @@ interface ProjectMeta {
 }
 
 export class FsTasksRepository implements TasksRepository {
-  constructor(private readonly teamsBasePath: string) {}
+  constructor(private readonly projectsBasePath: string) {}
 
   async save(task: Task): Promise<void> {
     const projectPath = await this.findProjectDir(task.projectId);
@@ -37,7 +37,7 @@ export class FsTasksRepository implements TasksRepository {
       description: task.description,
       status: task.status,
       projectId: task.projectId,
-      currentStep: task.currentStep ? { id: task.currentStep.id, index: task.currentStep.index } : null,
+      currentStep: task.currentStep ? { id: task.currentStep.id } : null,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
@@ -50,30 +50,22 @@ export class FsTasksRepository implements TasksRepository {
   }
 
   async findById(taskId: TaskId): Promise<Task | null> {
-    const teamDirs = await this.listTeamDirs();
+    const projectDirs = await this.listProjectDirs();
 
-    for (const teamDir of teamDirs) {
-      const projectDirs = await this.listProjectDirs(teamDir);
-      for (const projectDir of projectDirs) {
-        const taskFiles = await this.listTaskFiles(teamDir, projectDir);
-        for (const taskFile of taskFiles) {
-          try {
-            const filePath = path.join(
-              this.teamsBasePath,
-              teamDir,
-              "projects",
-              projectDir,
-              "tasks",
-              taskFile,
-            );
-            const raw = await readFile(filePath, "utf-8");
-            const record: TaskRecord = JSON.parse(raw);
-            if (record.id === taskId) {
-              return this.toTask(record);
-            }
-          } catch {
-            // Skip malformed task files
+    for (const projectDir of projectDirs) {
+      const taskFiles = await this.listTaskFiles(projectDir);
+      for (const taskFile of taskFiles) {
+        try {
+          const raw = await readFile(
+            path.join(this.projectsBasePath, projectDir, "tasks", taskFile),
+            "utf-8",
+          );
+          const record: TaskRecord = JSON.parse(raw);
+          if (record.id === taskId) {
+            return this.toTask(record);
           }
+        } catch {
+          // Skip malformed task files
         }
       }
     }
@@ -92,11 +84,11 @@ export class FsTasksRepository implements TasksRepository {
     try {
       const tasksPath = path.join(projectPath, "tasks");
       const dirents = await readdir(tasksPath, { withFileTypes: true });
-      const files = dirents.filter((d) => d.isFile() && d.name.endsWith(".json")).map((d) => d.name);
+      const files = dirents.filter((dirent) => dirent.isFile() && dirent.name.endsWith(".json"));
 
       for (const file of files) {
         try {
-          const raw = await readFile(path.join(tasksPath, file), "utf-8");
+          const raw = await readFile(path.join(tasksPath, file.name), "utf-8");
           const record: TaskRecord = JSON.parse(raw);
           tasks.push(this.toTask(record));
         } catch {
@@ -104,70 +96,44 @@ export class FsTasksRepository implements TasksRepository {
         }
       }
     } catch {
-      // tasks/ directory doesn't exist yet
+      // tasks/ directory does not exist yet
     }
 
     return tasks;
   }
 
   private async findProjectDir(projectId: ProjectId): Promise<string | null> {
-    const teamDirs = await this.listTeamDirs();
+    const projectDirs = await this.listProjectDirs();
 
-    for (const teamDir of teamDirs) {
-      const projectDirs = await this.listProjectDirs(teamDir);
-      for (const projectDir of projectDirs) {
-        try {
-          const filePath = path.join(
-            this.teamsBasePath,
-            teamDir,
-            "projects",
-            projectDir,
-            "project.json",
-          );
-          const raw = await readFile(filePath, "utf-8");
-          const meta: ProjectMeta = JSON.parse(raw);
-          if (meta.id === projectId) {
-            return path.join(this.teamsBasePath, teamDir, "projects", projectDir);
-          }
-        } catch {
-          // Skip directories without valid project.json
+    for (const projectDir of projectDirs) {
+      try {
+        const raw = await readFile(path.join(this.projectsBasePath, projectDir, "project.json"), "utf-8");
+        const meta: ProjectMeta = JSON.parse(raw);
+        if (meta.id === projectId) {
+          return path.join(this.projectsBasePath, projectDir);
         }
+      } catch {
+        // Skip directories without a valid project.json
       }
     }
 
     return null;
   }
 
-  private async listTeamDirs(): Promise<string[]> {
+  private async listProjectDirs(): Promise<string[]> {
     try {
-      const dirents = await readdir(this.teamsBasePath, { withFileTypes: true });
-      return dirents.filter((d) => d.isDirectory()).map((d) => d.name);
+      const dirents = await readdir(this.projectsBasePath, { withFileTypes: true });
+      return dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => dirent.name);
     } catch {
       return [];
     }
   }
 
-  private async listProjectDirs(teamDir: string): Promise<string[]> {
+  private async listTaskFiles(projectDir: string): Promise<string[]> {
     try {
-      const projectsPath = path.join(this.teamsBasePath, teamDir, "projects");
-      const dirents = await readdir(projectsPath, { withFileTypes: true });
-      return dirents.filter((d) => d.isDirectory()).map((d) => d.name);
-    } catch {
-      return [];
-    }
-  }
-
-  private async listTaskFiles(teamDir: string, projectDir: string): Promise<string[]> {
-    try {
-      const tasksPath = path.join(
-        this.teamsBasePath,
-        teamDir,
-        "projects",
-        projectDir,
-        "tasks",
-      );
+      const tasksPath = path.join(this.projectsBasePath, projectDir, "tasks");
       const dirents = await readdir(tasksPath, { withFileTypes: true });
-      return dirents.filter((d) => d.isFile() && d.name.endsWith(".json")).map((d) => d.name);
+      return dirents.filter((dirent) => dirent.isFile() && dirent.name.endsWith(".json")).map((dirent) => dirent.name);
     } catch {
       return [];
     }
@@ -182,7 +148,7 @@ export class FsTasksRepository implements TasksRepository {
       new Date(record.updatedAt),
       record.status,
       record.projectId,
-      record.currentStep ? new TaskCurrentStep(record.currentStep.id, record.currentStep.index) : null,
+      record.currentStep ? new TaskCurrentStep(record.currentStep.id) : null,
     );
   }
 }

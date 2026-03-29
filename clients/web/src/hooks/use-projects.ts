@@ -1,15 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import {
+  api,
+  type ProjectCreateInput,
+  type UpdateProjectWorkflowInput,
+} from "@/lib/api";
 
-export function useProjects(teamId: string) {
-  return useQuery({ queryKey: ["projects", teamId], queryFn: () => api.projects.listByTeam(teamId) });
+export function useProjects() {
+  return useQuery({ queryKey: ["projects"], queryFn: api.projects.list });
 }
 
-export function useCreateProject(teamId: string) {
+export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; workflowId: string }) => api.projects.create(teamId, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects", teamId] }),
+    mutationFn: (body: ProjectCreateInput) => api.projects.create(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
   });
 }
 
@@ -27,6 +31,17 @@ export function useProjectTasks(projectId: string) {
   });
 }
 
+export function useUpdateProjectWorkflow(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateProjectWorkflowInput) => api.projects.updateWorkflow(projectId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["projects", projectId] });
+    },
+  });
+}
+
 export function useAddTask(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -38,7 +53,7 @@ export function useAddTask(projectId: string) {
 export function useStartTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ taskId, stepId, stepIndex }: { taskId: string; stepId: string; stepIndex: number }) => api.tasks.start(taskId, { stepId, stepIndex }),
+    mutationFn: ({ taskId, stepId }: { taskId: string; stepId: string }) => api.tasks.start(taskId, { stepId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
   });
 }
@@ -46,7 +61,7 @@ export function useStartTask() {
 export function useMoveTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ taskId, stepId, stepIndex }: { taskId: string; stepId: string; stepIndex: number }) => api.tasks.move(taskId, { stepId, stepIndex }),
+    mutationFn: ({ taskId, stepId }: { taskId: string; stepId: string }) => api.tasks.move(taskId, { stepId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects"] }),
   });
 }

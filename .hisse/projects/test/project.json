@@ -1,0 +1,35 @@
+{
+  "id": "180d44a8-fff6-45bf-a41e-6b63b2fbcd24",
+  "name": "Test",
+  "description": "test",
+  "workflow": {
+    "id": "1b6d6885-bb63-4158-bd2e-c5fd02d955a4",
+    "steps": [
+      {
+        "type": "agent",
+        "id": "dfec6df8-801e-48e2-924d-f85fdc5efdf8",
+        "name": "Brainstorm",
+        "description": "Think about the problem. You can contact the human for Human in the loop via your tools, PLEASE group the questions together for faster iterations !\nOtherwise, your only output is a brief.md representing the output of your conversation with the human.",
+        "createdAt": "2026-03-29T00:09:57.116Z",
+        "agentId": "596a4f57-d239-4a68-8c59-6526190370c7"
+      },
+      {
+        "type": "human",
+        "id": "06b16a2d-aad0-46cc-a2b2-27c9fe2783a6",
+        "name": "Validation",
+        "description": "",
+        "createdAt": "2026-03-29T00:09:57.115Z",
+        "transports": [
+          {
+            "type": "local",
+            "target": "local",
+            "configuration": {},
+            "authenticated": false
+          }
+        ]
+      }
+    ]
+  },
+  "createdAt": "2026-03-29T00:08:06.162Z",
+  "updatedAt": "2026-03-29T00:09:57.116Z"
+}

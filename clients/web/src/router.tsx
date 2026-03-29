@@ -5,11 +5,7 @@ import { SkillsPage } from "./pages/skills/skills-page";
 import { SkillDetailPage } from "./pages/skills/skill-detail-page";
 import { AgentsPage } from "./pages/agents/agents-page";
 import { AgentDetailPage } from "./pages/agents/agent-detail-page";
-import { StepsPage } from "./pages/steps/steps-page";
-import { TeamsPage } from "./pages/teams/teams-page";
-import { TeamDetailPage } from "./pages/teams/team-detail-page";
-import { WorkflowsPage } from "./pages/workflows/workflows-page";
-import { WorkflowDetailPage } from "./pages/workflows/workflow-detail-page";
+import { ProjectsPage } from "./pages/projects/projects-page";
 import { ToolsPage } from "./pages/tools/tools-page";
 import { ToolDetailPage } from "./pages/tools/tool-detail-page";
 import { ProjectDetailPage } from "./pages/projects/project-detail-page";
@@ -27,12 +23,8 @@ export const router = createBrowserRouter([
       { path: "tools/:toolName", element: <ToolDetailPage /> },
       { path: "agents", element: <AgentsPage /> },
       { path: "agents/:agentId", element: <AgentDetailPage /> },
-      { path: "steps", element: <StepsPage /> },
-      { path: "workflows", element: <WorkflowsPage /> },
-      { path: "workflows/:workflowId", element: <WorkflowDetailPage /> },
-      { path: "teams", element: <TeamsPage /> },
-      { path: "teams/:teamId", element: <TeamDetailPage /> },
-      { path: "teams/:teamId/projects/:projectId", element: <ProjectDetailPage /> },
+      { path: "projects", element: <ProjectsPage /> },
+      { path: "projects/:projectId", element: <ProjectDetailPage /> },
       { path: "connectors", element: <ConnectorsPage /> },
       { path: "chat", element: <ChatPage /> },
       { path: "chat/:conversationId", element: <ChatPage /> },

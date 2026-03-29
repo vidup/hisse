@@ -16,7 +16,7 @@ export class GetTasksByProjectQueryHandler {
       description: task.description,
       status: task.status,
       projectId: task.projectId,
-      currentStep: task.currentStep ? { id: task.currentStep.id, index: task.currentStep.index } : null,
+      currentStep: task.currentStep ? { id: task.currentStep.id } : null,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     }));

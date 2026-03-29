@@ -8,13 +8,12 @@ import type { TaskSummary } from "@/lib/api";
 
 interface BoardColumnProps {
   stepId: string;
-  stepIndex: number;
   title: string;
   kind: "backlog" | "step" | "completed";
   tasks: TaskSummary[];
 }
 
-export function BoardColumn({ stepId, stepIndex, title, kind, tasks }: BoardColumnProps) {
+export function BoardColumn({ stepId, title, kind, tasks }: BoardColumnProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const { mutate: startTask } = useStartTask();
@@ -25,7 +24,7 @@ export function BoardColumn({ stepId, stepIndex, title, kind, tasks }: BoardColu
     if (!ref.current) return;
     return dropTargetForElements({
       element: ref.current,
-      getData: () => ({ stepId, stepIndex, kind }),
+      getData: () => ({ stepId, kind }),
       onDragEnter: () => setIsDragOver(true),
       onDragLeave: () => setIsDragOver(false),
       onDrop: ({ source }) => {
@@ -37,14 +36,14 @@ export function BoardColumn({ stepId, stepIndex, title, kind, tasks }: BoardColu
           completeTask(taskId);
         } else if (kind === "step") {
           if (taskStatus === "backlog") {
-            startTask({ taskId, stepId, stepIndex });
+            startTask({ taskId, stepId });
           } else {
-            moveTask({ taskId, stepId, stepIndex });
+            moveTask({ taskId, stepId });
           }
         }
       },
     });
-  }, [stepId, stepIndex, kind, startTask, moveTask, completeTask]);
+  }, [stepId, kind, startTask, moveTask, completeTask]);
 
   return (
     <div

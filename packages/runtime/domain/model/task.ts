@@ -6,10 +6,7 @@ export type TaskId = string;
 export type TaskStatus = "backlog" | "in_progress" | "completed";
 
 export class TaskCurrentStep {
-  constructor(
-    public readonly id: StepId,
-    public readonly index: number,
-  ) {}
+  constructor(public readonly id: StepId) {}
 }
 
 export class Task {

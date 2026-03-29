@@ -3,14 +3,12 @@ import { NavLink, useLocation, useNavigate } from "react-router";
 import {
   BookOpenIcon,
   BotIcon,
-  GitBranchIcon,
-  ListChecksIcon,
   MessageSquareIcon,
   PlusIcon,
   PlugIcon,
+  FolderIcon,
   SparklesIcon,
   WrenchIcon,
-  UsersIcon,
   WifiIcon,
   WifiOffIcon,
 } from "lucide-react";
@@ -39,9 +37,7 @@ const navItems = [
   { to: "/skills", label: "Skills", icon: BookOpenIcon },
   { to: "/tools", label: "Tools", icon: WrenchIcon },
   { to: "/agents", label: "Agents", icon: BotIcon },
-  { to: "/steps", label: "Steps", icon: ListChecksIcon },
-  { to: "/workflows", label: "Workflows", icon: GitBranchIcon },
-  { to: "/teams", label: "Teams", icon: UsersIcon },
+  { to: "/projects", label: "Projects", icon: FolderIcon },
   { to: "/connectors", label: "Connectors", icon: PlugIcon },
 ];
 

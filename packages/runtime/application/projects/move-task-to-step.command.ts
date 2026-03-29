@@ -1,30 +1,32 @@
 import type { StepId } from "../../domain/model/steps.js";
 import { type TaskId, TaskCurrentStep } from "../../domain/model/task.js";
+import type { ProjectsRepository } from "../../domain/ports/projects.repository.js";
 import type { TasksRepository } from "../../domain/ports/tasks.repository.js";
-import type { StepsRepository } from "../../domain/ports/steps.repository.js";
 
 export class MoveTaskToStepCommand {
   constructor(
     public readonly taskId: TaskId,
     public readonly stepId: StepId,
-    public readonly stepIndex: number,
   ) {}
 }
 
 export class MoveTaskToStepCommandHandler {
   constructor(
     private readonly tasksRepository: TasksRepository,
-    private readonly stepsRepository: StepsRepository,
+    private readonly projectsRepository: ProjectsRepository,
   ) {}
 
   async execute(command: MoveTaskToStepCommand) {
     const task = await this.tasksRepository.findById(command.taskId);
     if (!task) throw new Error("Task not found");
 
-    const step = await this.stepsRepository.findById(command.stepId);
-    if (!step) throw new Error("Step not found");
+    const project = await this.projectsRepository.findById(task.projectId);
+    if (!project) throw new Error("Project not found");
 
-    task.moveToStep(new TaskCurrentStep(command.stepId, command.stepIndex));
+    const step = project.workflow.steps.find((candidate) => candidate.id === command.stepId);
+    if (!step) throw new Error("Step not found in project workflow");
+
+    task.moveToStep(new TaskCurrentStep(command.stepId));
     await this.tasksRepository.save(task);
   }
 }
