@@ -1,12 +1,36 @@
 import { ProjectId } from "./project";
 import { StepId } from "./steps";
+import type { ConversationQuestionDefinition, ConversationQuestionAnswer } from "./message";
 
 export type TaskId = string;
 
 export type TaskStatus = "backlog" | "in_progress" | "completed";
 
+export interface StepInputRequest {
+  title?: string;
+  instructions?: string;
+  questions: ConversationQuestionDefinition[];
+}
+
+export interface StepInputResponse {
+  answers: ConversationQuestionAnswer[];
+  answeredAt: Date;
+}
+
+export type StepExecutionState =
+  | { status: "idle" }
+  | { status: "running"; startedAt: Date }
+  | { status: "completed"; startedAt: Date; completedAt: Date; durationMs: number }
+  | { status: "failed"; startedAt: Date; failedAt: Date; durationMs: number; reason: string }
+  | { status: "waiting_for_input"; startedAt: Date; inputRequest: StepInputRequest; inputResponse?: StepInputResponse };
+
+export type StepExecutionStatus = StepExecutionState["status"];
+
 export class TaskCurrentStep {
-  constructor(public readonly id: StepId) {}
+  constructor(
+    public readonly id: StepId,
+    public executionState: StepExecutionState = { status: "idle" },
+  ) { }
 }
 
 export class Task {
@@ -45,6 +69,7 @@ export class Task {
       throw new Error("Task is not in progress");
     }
     this.currentStep = step;
+    this.updatedAt = new Date();
     this.newEvents.push(new TaskMovedToStep(this.id, step, new Date()));
   }
 
@@ -56,6 +81,63 @@ export class Task {
     this.currentStep = null;
     this.updatedAt = new Date();
     this.newEvents.push(new TaskCompleted(this.id, new Date(), this.projectId));
+  }
+
+  markStepRunning() {
+    if (!this.currentStep) throw new Error("No current step");
+    this.currentStep.executionState = { status: "running", startedAt: new Date() };
+    this.updatedAt = new Date();
+  }
+
+  markStepCompleted() {
+    if (!this.currentStep) throw new Error("No current step");
+    const state = this.currentStep.executionState;
+    const startedAt = state.status === "running" ? state.startedAt : new Date();
+    const completedAt = new Date();
+    this.currentStep.executionState = {
+      status: "completed",
+      startedAt,
+      completedAt,
+      durationMs: completedAt.getTime() - startedAt.getTime(),
+    };
+    this.updatedAt = new Date();
+  }
+
+  markStepFailed(reason: string) {
+    if (!this.currentStep) throw new Error("No current step");
+    const state = this.currentStep.executionState;
+    const startedAt = state.status === "running" ? state.startedAt : new Date();
+    const failedAt = new Date();
+    this.currentStep.executionState = {
+      status: "failed",
+      startedAt,
+      failedAt,
+      durationMs: failedAt.getTime() - startedAt.getTime(),
+      reason,
+    };
+    this.updatedAt = new Date();
+  }
+
+  markStepWaitingForInput(inputRequest: StepInputRequest) {
+    if (!this.currentStep) throw new Error("No current step");
+    const state = this.currentStep.executionState;
+    const startedAt = state.status === "running" ? state.startedAt : new Date();
+    this.currentStep.executionState = {
+      status: "waiting_for_input",
+      startedAt,
+      inputRequest,
+    };
+    this.updatedAt = new Date();
+  }
+
+  provideStepInput(answers: ConversationQuestionAnswer[]) {
+    if (!this.currentStep) throw new Error("No current step");
+    const state = this.currentStep.executionState;
+    if (state.status !== "waiting_for_input") {
+      throw new Error("Step is not waiting for input");
+    }
+    state.inputResponse = { answers, answeredAt: new Date() };
+    this.updatedAt = new Date();
   }
 
   static create(params: { name: string; description: string; projectId: ProjectId }) {
@@ -75,7 +157,7 @@ export class TaskCreated {
     public readonly updatedAt: Date,
     public readonly status: TaskStatus,
     public readonly projectId: ProjectId,
-  ) {}
+  ) { }
 }
 
 export class TaskStarted {
@@ -83,7 +165,7 @@ export class TaskStarted {
     public readonly id: TaskId,
     public readonly startedAt: Date,
     public readonly projectId: ProjectId,
-  ) {}
+  ) { }
 }
 
 export class TaskMovedToStep {
@@ -91,7 +173,7 @@ export class TaskMovedToStep {
     public readonly id: TaskId,
     public readonly step: TaskCurrentStep,
     public readonly movedAt: Date,
-  ) {}
+  ) { }
 }
 
 export class TaskCompleted {
@@ -99,7 +181,7 @@ export class TaskCompleted {
     public readonly id: TaskId,
     public readonly completedAt: Date,
     public readonly projectId: ProjectId,
-  ) {}
+  ) { }
 }
 
 export type TaskEvent = TaskCreated | TaskStarted | TaskMovedToStep | TaskCompleted;

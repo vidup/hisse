@@ -57,6 +57,30 @@ export class AgentStep {
   }
 }
 
+export class AutomationStep {
+  private newEvents: Array<StepEvent> = [];
+  constructor(
+    public readonly id: StepId,
+    public readonly name: string,
+    public readonly description: string,
+    public readonly createdAt: Date,
+    public readonly codePath: string, // relative path from .hisse/ (e.g. "projects/my-project/automation-steps/verify-brief.ts")
+    private readonly _events: Array<StepEvent> = [],
+  ) {
+    this.newEvents = _events;
+  }
+
+  static create(params: { name: string; description: string; codePath: string }) {
+    const id = crypto.randomUUID();
+    return new AutomationStep(id, params.name, params.description, new Date(), params.codePath, [
+      new StepCreatedEvent(id, params.name, params.description, new Date(), {
+        kind: "automation",
+        codePath: params.codePath,
+      }),
+    ]);
+  }
+}
+
 export class StepCreatedEvent {
   constructor(
     public readonly stepId: StepId,
@@ -65,9 +89,10 @@ export class StepCreatedEvent {
     public readonly createdAt: Date,
     public readonly parameters:
       | { kind: "agent"; agentId: AgentId }
-      | { kind: "human"; transports: Array<Transport> },
+      | { kind: "human"; transports: Array<Transport> }
+      | { kind: "automation"; codePath: string },
   ) {}
 }
 
-export type Step = HumanStep | AgentStep;
+export type Step = HumanStep | AgentStep | AutomationStep;
 export type StepEvent = StepCreatedEvent;
