@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ProjectId } from "../domain/model/project.js";
-import { Task, TaskCurrentStep, TaskId, TaskStatus } from "../domain/model/task.js";
+import { Task, TaskCurrentStep, TaskId, TaskStatus, type StepExecutionState, type StepInputRequest, type StepInputResponse } from "../domain/model/task.js";
 import type { TasksRepository } from "../domain/ports/tasks.repository.js";
 
 interface TaskRecord {
@@ -10,10 +10,20 @@ interface TaskRecord {
   description: string;
   status: TaskStatus;
   projectId: string;
-  currentStep: { id: string } | null;
+  currentStep: {
+    id: string;
+    executionState?: SerializedStepExecutionState;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
+
+type SerializedStepExecutionState =
+  | { status: "idle" }
+  | { status: "running"; startedAt: string }
+  | { status: "completed"; startedAt: string; completedAt: string; durationMs: number }
+  | { status: "failed"; startedAt: string; failedAt: string; durationMs: number; reason: string }
+  | { status: "waiting_for_input"; startedAt: string; inputRequest: unknown; inputResponse?: unknown };
 
 interface ProjectMeta {
   id: string;
@@ -37,7 +47,9 @@ export class FsTasksRepository implements TasksRepository {
       description: task.description,
       status: task.status,
       projectId: task.projectId,
-      currentStep: task.currentStep ? { id: task.currentStep.id } : null,
+      currentStep: task.currentStep
+        ? { id: task.currentStep.id, executionState: serializeExecutionState(task.currentStep.executionState) }
+        : null,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
@@ -148,7 +160,82 @@ export class FsTasksRepository implements TasksRepository {
       new Date(record.updatedAt),
       record.status,
       record.projectId,
-      record.currentStep ? new TaskCurrentStep(record.currentStep.id) : null,
+      record.currentStep
+        ? new TaskCurrentStep(record.currentStep.id, deserializeExecutionState(record.currentStep.executionState))
+        : null,
     );
+  }
+}
+
+function serializeExecutionState(state: StepExecutionState): SerializedStepExecutionState {
+  switch (state.status) {
+    case "idle":
+      return { status: "idle" };
+    case "running":
+      return { status: "running", startedAt: state.startedAt.toISOString() };
+    case "completed":
+      return {
+        status: "completed",
+        startedAt: state.startedAt.toISOString(),
+        completedAt: state.completedAt.toISOString(),
+        durationMs: state.durationMs,
+      };
+    case "failed":
+      return {
+        status: "failed",
+        startedAt: state.startedAt.toISOString(),
+        failedAt: state.failedAt.toISOString(),
+        durationMs: state.durationMs,
+        reason: state.reason,
+      };
+    case "waiting_for_input":
+      return {
+        status: "waiting_for_input",
+        startedAt: state.startedAt.toISOString(),
+        inputRequest: state.inputRequest,
+        inputResponse: state.inputResponse
+          ? { answers: state.inputResponse.answers, answeredAt: state.inputResponse.answeredAt.toISOString() }
+          : undefined,
+      };
+  }
+}
+
+function deserializeExecutionState(raw?: SerializedStepExecutionState): StepExecutionState {
+  if (!raw) return { status: "idle" };
+
+  switch (raw.status) {
+    case "idle":
+      return { status: "idle" };
+    case "running":
+      return { status: "running", startedAt: new Date(raw.startedAt) };
+    case "completed":
+      return {
+        status: "completed",
+        startedAt: new Date(raw.startedAt),
+        completedAt: new Date(raw.completedAt),
+        durationMs: raw.durationMs,
+      };
+    case "failed":
+      return {
+        status: "failed",
+        startedAt: new Date(raw.startedAt),
+        failedAt: new Date(raw.failedAt),
+        durationMs: raw.durationMs,
+        reason: raw.reason,
+      };
+    case "waiting_for_input": {
+      const inputRequest = raw.inputRequest as StepInputRequest;
+      const rawResponse = raw.inputResponse as { answers: unknown[]; answeredAt: string } | undefined;
+      return {
+        status: "waiting_for_input",
+        startedAt: new Date(raw.startedAt),
+        inputRequest,
+        inputResponse: rawResponse
+          ? { answers: rawResponse.answers as StepInputResponse["answers"], answeredAt: new Date(rawResponse.answeredAt) }
+          : undefined,
+      };
+    }
+    default:
+      return { status: "idle" };
   }
 }

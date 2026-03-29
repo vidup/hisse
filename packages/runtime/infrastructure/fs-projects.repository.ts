@@ -7,6 +7,7 @@ import {
 } from "../domain/model/project.js";
 import {
   AgentStep,
+  AutomationStep,
   HumanStep,
   type Step,
   type Transport,
@@ -31,13 +32,22 @@ interface SerializedHumanStep {
   transports: Transport[];
 }
 
+interface SerializedAutomationStep {
+  type: "automation";
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  codePath: string;
+}
+
 interface ProjectRecord {
   id: string;
   name: string;
   description: string;
   workflow: {
     id: string;
-    steps: Array<SerializedAgentStep | SerializedHumanStep>;
+    steps: Array<SerializedAgentStep | SerializedHumanStep | SerializedAutomationStep>;
   };
   createdAt: string;
   updatedAt: string;
@@ -133,7 +143,7 @@ function serializeWorkflow(workflow: ProjectWorkflow): ProjectRecord["workflow"]
     steps: workflow.steps.map((step) => {
       if (step instanceof AgentStep) {
         return {
-          type: "agent",
+          type: "agent" as const,
           id: step.id,
           name: step.name,
           description: step.description,
@@ -142,8 +152,19 @@ function serializeWorkflow(workflow: ProjectWorkflow): ProjectRecord["workflow"]
         };
       }
 
+      if (step instanceof AutomationStep) {
+        return {
+          type: "automation" as const,
+          id: step.id,
+          name: step.name,
+          description: step.description,
+          createdAt: step.createdAt.toISOString(),
+          codePath: step.codePath,
+        };
+      }
+
       return {
-        type: "human",
+        type: "human" as const,
         id: step.id,
         name: step.name,
         description: step.description,
@@ -169,6 +190,16 @@ function deserializeStep(record: ProjectRecord["workflow"]["steps"][number]): St
       record.description,
       new Date(record.createdAt),
       record.agentId,
+    );
+  }
+
+  if (record.type === "automation") {
+    return new AutomationStep(
+      record.id,
+      record.name,
+      record.description,
+      new Date(record.createdAt),
+      record.codePath,
     );
   }
 
