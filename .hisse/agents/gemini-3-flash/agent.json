@@ -1,0 +1,12 @@
+{
+  "id": "5d1c2eb6-b2ad-48f6-af09-adcec79892c5",
+  "name": "gemini 3 flash",
+  "description": "flash 3",
+  "systemPrompt": "do what you're told",
+  "provider": "google",
+  "model": "gemini-3-flash-preview",
+  "tools": [],
+  "skills": [],
+  "createdAt": "2026-03-29T12:31:23.984Z",
+  "updatedAt": "2026-03-29T12:31:23.984Z"
+}
