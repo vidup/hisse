@@ -78,7 +78,7 @@ export function SkillDetailPage() {
         </div>
       }
     >
-      <form id="skill-form" onSubmit={handleSave} className="grid gap-4 max-w-2xl">
+      <form id="skill-form" onSubmit={handleSave} className="grid gap-4">
         <div className="grid gap-2">
           <Label htmlFor="detail-name">Name</Label>
           <Input id="detail-name" value={name} onChange={(e) => setName(e.target.value)} required />
