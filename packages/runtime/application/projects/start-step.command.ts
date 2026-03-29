@@ -1,7 +1,8 @@
-import { StepId } from "../../domain/model/steps";
-import { TaskId, TaskCurrentStep } from "../../domain/model/task";
-import { ProjectsRepository } from "../../domain/ports/projects.repository";
-import { TasksRepository } from "../../domain/ports/tasks.repository";
+import { AutomationStep, type StepId } from "../../domain/model/steps";
+import { type TaskId, TaskCurrentStep } from "../../domain/model/task";
+import type { ProjectsRepository } from "../../domain/ports/projects.repository";
+import type { TasksRepository } from "../../domain/ports/tasks.repository";
+import type { AdvanceTaskService } from "./advance-task.service";
 
 export class StartStepCommand {
   constructor(
@@ -14,6 +15,7 @@ export class StartStepCommandHandler {
   constructor(
     private readonly taskRepository: TasksRepository,
     private readonly projectsRepository: ProjectsRepository,
+    private readonly advanceTaskService: AdvanceTaskService,
   ) {}
 
   async execute(command: StartStepCommand) {
@@ -28,5 +30,9 @@ export class StartStepCommandHandler {
 
     task.start(new TaskCurrentStep(command.stepId));
     await this.taskRepository.save(task);
+
+    if (step instanceof AutomationStep) {
+      await this.advanceTaskService.executeAutomationStep(command.taskId, step);
+    }
   }
 }

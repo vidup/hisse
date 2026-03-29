@@ -1,7 +1,8 @@
-import type { StepId } from "../../domain/model/steps.js";
+import { AutomationStep, type StepId } from "../../domain/model/steps.js";
 import { type TaskId, TaskCurrentStep } from "../../domain/model/task.js";
 import type { ProjectsRepository } from "../../domain/ports/projects.repository.js";
 import type { TasksRepository } from "../../domain/ports/tasks.repository.js";
+import type { AdvanceTaskService } from "./advance-task.service.js";
 
 export class MoveTaskToStepCommand {
   constructor(
@@ -14,6 +15,7 @@ export class MoveTaskToStepCommandHandler {
   constructor(
     private readonly tasksRepository: TasksRepository,
     private readonly projectsRepository: ProjectsRepository,
+    private readonly advanceTaskService: AdvanceTaskService,
   ) {}
 
   async execute(command: MoveTaskToStepCommand) {
@@ -28,5 +30,9 @@ export class MoveTaskToStepCommandHandler {
 
     task.moveToStep(new TaskCurrentStep(command.stepId));
     await this.tasksRepository.save(task);
+
+    if (step instanceof AutomationStep) {
+      await this.advanceTaskService.executeAutomationStep(command.taskId, step);
+    }
   }
 }

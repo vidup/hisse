@@ -1,6 +1,6 @@
 import type { ProjectId } from "../../domain/model/project.js";
 import type { ProjectsRepository } from "../../domain/ports/projects.repository.js";
-import { AgentStep } from "../../domain/model/steps.js";
+import { AgentStep, AutomationStep } from "../../domain/model/steps.js";
 
 export class GetProjectByIdQuery {
   constructor(public readonly projectId: ProjectId) {}
@@ -16,6 +16,9 @@ export class GetProjectByIdQueryHandler {
     const steps = project.workflow.steps.map((step) => {
       if (step instanceof AgentStep) {
         return { id: step.id, name: step.name, description: step.description, kind: "agent" as const, agentId: step.agentId };
+      }
+      if (step instanceof AutomationStep) {
+        return { id: step.id, name: step.name, description: step.description, kind: "automation" as const, codePath: step.codePath };
       }
       return { id: step.id, name: step.name, description: step.description, kind: "human" as const };
     });

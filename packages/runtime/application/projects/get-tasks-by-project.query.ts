@@ -1,4 +1,5 @@
 import type { ProjectId } from "../../domain/model/project.js";
+import type { StepExecutionState } from "../../domain/model/task.js";
 import type { TasksRepository } from "../../domain/ports/tasks.repository.js";
 
 export class GetTasksByProjectQuery {
@@ -16,9 +17,44 @@ export class GetTasksByProjectQueryHandler {
       description: task.description,
       status: task.status,
       projectId: task.projectId,
-      currentStep: task.currentStep ? { id: task.currentStep.id } : null,
+      currentStep: task.currentStep
+        ? { id: task.currentStep.id, executionState: serializeExecutionState(task.currentStep.executionState) }
+        : null,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     }));
+  }
+}
+
+function serializeExecutionState(state: StepExecutionState) {
+  switch (state.status) {
+    case "idle":
+      return { status: "idle" as const };
+    case "running":
+      return { status: "running" as const, startedAt: state.startedAt.toISOString() };
+    case "completed":
+      return {
+        status: "completed" as const,
+        startedAt: state.startedAt.toISOString(),
+        completedAt: state.completedAt.toISOString(),
+        durationMs: state.durationMs,
+      };
+    case "failed":
+      return {
+        status: "failed" as const,
+        startedAt: state.startedAt.toISOString(),
+        failedAt: state.failedAt.toISOString(),
+        durationMs: state.durationMs,
+        reason: state.reason,
+      };
+    case "waiting_for_input":
+      return {
+        status: "waiting_for_input" as const,
+        startedAt: state.startedAt.toISOString(),
+        inputRequest: state.inputRequest,
+        inputResponse: state.inputResponse
+          ? { answers: state.inputResponse.answers, answeredAt: state.inputResponse.answeredAt.toISOString() }
+          : undefined,
+      };
   }
 }
