@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @source "../node_modules/streamdown/dist/*.js";
+@source inline("pointer-events-auto pointer-events-none sticky supports-[backdrop-filter]:bg-sidebar/70 supports-[backdrop-filter]:backdrop-blur supports-[backdrop-filter]:bg-background/70 supports-[backdrop-filter]:backdrop-blur-sm");
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/raleway";
