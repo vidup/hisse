@@ -112,6 +112,11 @@ export type ProjectWorkflowStepInput =
       name: string;
       description?: string;
       transports: ProjectWorkflowTransportInput[];
+    }
+  | {
+      kind: "automation";
+      name: string;
+      description?: string;
     };
 
 export interface ProjectCreateInput {
@@ -135,13 +140,20 @@ export interface ProjectSummary {
   updatedAt: string;
 }
 
+export type StepExecutionStateSummary =
+  | { status: "idle" }
+  | { status: "running"; startedAt: string }
+  | { status: "completed"; startedAt: string; completedAt: string; durationMs: number }
+  | { status: "failed"; startedAt: string; failedAt: string; durationMs: number; reason: string }
+  | { status: "waiting_for_input"; startedAt: string; inputRequest: unknown; inputResponse?: unknown };
+
 export interface TaskSummary {
   id: string;
   name: string;
   description: string;
   status: "backlog" | "in_progress" | "completed";
   projectId: string;
-  currentStep: { id: string } | null;
+  currentStep: { id: string; executionState: StepExecutionStateSummary } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -154,7 +166,11 @@ export interface ProjectDetail {
   updatedAt: string;
   workflow: {
     id: string;
-    steps: Array<{ id: string; name: string; description: string; kind: "agent" | "human"; agentId?: string }>;
+    steps: Array<
+      | { id: string; name: string; description: string; kind: "agent"; agentId?: string }
+      | { id: string; name: string; description: string; kind: "human" }
+      | { id: string; name: string; description: string; kind: "automation"; codePath?: string }
+    >;
   };
 }
 

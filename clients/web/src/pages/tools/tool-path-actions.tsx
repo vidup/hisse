@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 
 interface ToolPathActionsProps {
   targetPath: string;
+  folderPath?: string;
   disabled?: boolean;
   size?: "xs" | "sm";
 }
@@ -19,6 +20,7 @@ function getErrorMessage(error: unknown): string {
 
 export function ToolPathActions({
   targetPath,
+  folderPath,
   disabled = false,
   size = "sm",
 }: ToolPathActionsProps) {
@@ -85,7 +87,7 @@ export function ToolPathActions({
         onClick={(event) =>
           runDesktopAction(
             event,
-            () => window.electron!.openInFileManager(targetPath),
+            () => window.electron!.openInFileManager(folderPath ?? targetPath),
             "in Explorer",
           )
         }

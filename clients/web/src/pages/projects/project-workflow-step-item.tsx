@@ -6,11 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { type ProjectWorkflowStepInput } from "@/lib/api";
+import { ToolPathActions } from "@/pages/tools/tool-path-actions";
+import { useWorkspace } from "@/hooks/use-workspace";
+
+function joinPath(basePath: string, ...segments: string[]) {
+  return [basePath, ...segments].join("/").replace(/\/+/g, "/");
+}
 
 interface ProjectWorkflowStepItemProps {
   step: ProjectWorkflowStepInput;
   index: number;
   agentName?: string;
+  codePath?: string;
   onRemove: () => void;
   onReorder: (sourceIndex: number, targetIndex: number) => void;
 }
@@ -19,9 +26,11 @@ export function ProjectWorkflowStepItem({
   step,
   index,
   agentName,
+  codePath,
   onRemove,
   onReorder,
 }: ProjectWorkflowStepItemProps) {
+  const { currentPath } = useWorkspace();
   const ref = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -70,8 +79,8 @@ export function ProjectWorkflowStepItem({
             <div className="grid gap-2">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">#{index + 1}</Badge>
-                <Badge variant={step.kind === "agent" ? "default" : "outline"}>
-                  {step.kind === "agent" ? "Agent" : "Human"}
+                <Badge variant={step.kind === "agent" ? "default" : step.kind === "automation" ? "destructive" : "outline"}>
+                  {step.kind === "agent" ? "Agent" : step.kind === "automation" ? "Automation" : "Human"}
                 </Badge>
                 <span className="font-medium">{step.name}</span>
               </div>
@@ -81,8 +90,20 @@ export function ProjectWorkflowStepItem({
               ) : null}
 
               <p className="text-xs text-muted-foreground">
-                {step.kind === "agent" ? `Agent: ${agentName ?? step.agentId}` : "Transport: in-app"}
+                {step.kind === "agent"
+                  ? `Agent: ${agentName ?? step.agentId}`
+                  : step.kind === "automation"
+                    ? "Automation: TypeScript"
+                    : "Transport: in-app"}
               </p>
+
+              {step.kind === "automation" && codePath && currentPath ? (
+                <ToolPathActions
+                  targetPath={joinPath(currentPath, ".hisse", codePath)}
+                  folderPath={joinPath(currentPath, ".hisse", codePath, "..")}
+                  size="xs"
+                />
+              ) : null}
             </div>
           </div>
 

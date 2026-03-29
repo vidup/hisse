@@ -28,6 +28,8 @@ const LOCAL_TRANSPORT = {
   authenticated: false,
 } as const;
 
+type StepKind = "agent" | "human" | "automation";
+
 interface AddProjectStepDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,7 +43,7 @@ export function AddProjectStepDialog({
   agents,
   onAdd,
 }: AddProjectStepDialogProps) {
-  const [stepKind, setStepKind] = useState<"agent" | "human">("agent");
+  const [stepKind, setStepKind] = useState<StepKind>("agent");
   const [stepName, setStepName] = useState("");
   const [stepDescription, setStepDescription] = useState("");
   const [agentId, setAgentId] = useState("");
@@ -57,7 +59,9 @@ export function AddProjectStepDialog({
     setAgentId("");
   }, [open]);
 
-  const canSubmit = stepName.trim().length > 0 && (stepKind === "human" || agentId.length > 0);
+  const canSubmit =
+    stepName.trim().length > 0 &&
+    (stepKind === "human" || stepKind === "automation" || agentId.length > 0);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,20 +71,29 @@ export function AddProjectStepDialog({
       return;
     }
 
-    const nextStep: ProjectWorkflowStepInput =
-      stepKind === "agent"
-        ? {
-            kind: "agent",
-            name: trimmedName,
-            description: stepDescription.trim(),
-            agentId,
-          }
-        : {
-            kind: "human",
-            name: trimmedName,
-            description: stepDescription.trim(),
-            transports: [{ ...LOCAL_TRANSPORT }],
-          };
+    let nextStep: ProjectWorkflowStepInput;
+
+    if (stepKind === "agent") {
+      nextStep = {
+        kind: "agent",
+        name: trimmedName,
+        description: stepDescription.trim(),
+        agentId,
+      };
+    } else if (stepKind === "automation") {
+      nextStep = {
+        kind: "automation",
+        name: trimmedName,
+        description: stepDescription.trim(),
+      };
+    } else {
+      nextStep = {
+        kind: "human",
+        name: trimmedName,
+        description: stepDescription.trim(),
+        transports: [{ ...LOCAL_TRANSPORT }],
+      };
+    }
 
     onAdd(nextStep);
     onOpenChange(false);
@@ -99,13 +112,14 @@ export function AddProjectStepDialog({
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="grid gap-2">
             <Label>Step Kind</Label>
-            <Select value={stepKind} onValueChange={(value) => setStepKind(value as "agent" | "human")}>
+            <Select value={stepKind} onValueChange={(value) => setStepKind(value as StepKind)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="agent">Agent Step</SelectItem>
                 <SelectItem value="human">Human Step</SelectItem>
+                <SelectItem value="automation">Automation Step</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -146,6 +160,10 @@ export function AddProjectStepDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          ) : stepKind === "automation" ? (
+            <div className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+              A TypeScript file will be created automatically. Open it in your editor to implement the logic.
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">

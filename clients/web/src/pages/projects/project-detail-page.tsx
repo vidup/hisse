@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAgents } from "@/hooks/use-agents";
 import { useProject, useProjectTasks, useUpdateProjectWorkflow } from "@/hooks/use-projects";
-import { type ProjectWorkflowStepInput } from "@/lib/api";
+import { type ProjectDetail, type ProjectWorkflowStepInput } from "@/lib/api";
 import { PageLayout } from "@/layouts/page-layout";
 import { AddTaskDialog } from "./add-task-dialog";
 import { AddProjectStepDialog } from "./add-project-step-dialog";
@@ -41,28 +41,7 @@ export function ProjectDetailPage() {
     }
 
     setWorkflowSteps(
-      project.workflow.steps.map((step) =>
-        step.kind === "agent"
-          ? {
-              kind: "agent" as const,
-              name: step.name,
-              description: step.description,
-              agentId: step.agentId ?? "",
-            }
-          : {
-              kind: "human" as const,
-              name: step.name,
-              description: step.description,
-              transports: [
-                {
-                  type: "local",
-                  target: "local",
-                  configuration: {},
-                  authenticated: false,
-                },
-              ],
-            },
-      ),
+      project.workflow.steps.map((step) => mapSavedStepToInput(step)),
     );
   }, [project?.id, project?.updatedAt]);
 
@@ -79,30 +58,7 @@ export function ProjectDetailPage() {
   const hasSavedWorkflow = savedWorkflowSteps.length > 0;
   const isWorkflowDirty =
     JSON.stringify(workflowSteps) !==
-    JSON.stringify(
-      savedWorkflowSteps.map((step) =>
-        step.kind === "agent"
-          ? {
-              kind: "agent" as const,
-              name: step.name,
-              description: step.description,
-              agentId: step.agentId ?? "",
-            }
-          : {
-              kind: "human" as const,
-              name: step.name,
-              description: step.description,
-              transports: [
-                {
-                  type: "local",
-                  target: "local",
-                  configuration: {},
-                  authenticated: false,
-                },
-              ],
-            },
-      ),
-    );
+    JSON.stringify(savedWorkflowSteps.map((step) => mapSavedStepToInput(step)));
 
   const columns = project
     ? [
@@ -268,6 +224,11 @@ export function ProjectDetailPage() {
                           ? (agents?.find((agent) => agent.id === step.agentId)?.name ?? step.agentId)
                           : undefined
                       }
+                      codePath={
+                        step.kind === "automation"
+                          ? (savedWorkflowSteps.find((s): s is Extract<typeof s, { kind: "automation" }> => s.kind === "automation" && s.name === step.name))?.codePath
+                          : undefined
+                      }
                       onRemove={() => removeStep(index)}
                       onReorder={reorderSteps}
                     />
@@ -305,4 +266,35 @@ export function ProjectDetailPage() {
       />
     </PageLayout>
   );
+}
+
+function mapSavedStepToInput(step: ProjectDetail["workflow"]["steps"][number]): ProjectWorkflowStepInput {
+  if (step.kind === "agent") {
+    return {
+      kind: "agent" as const,
+      name: step.name,
+      description: step.description,
+      agentId: step.agentId ?? "",
+    };
+  }
+  if (step.kind === "automation") {
+    return {
+      kind: "automation" as const,
+      name: step.name,
+      description: step.description,
+    };
+  }
+  return {
+    kind: "human" as const,
+    name: step.name,
+    description: step.description,
+    transports: [
+      {
+        type: "local",
+        target: "local",
+        configuration: {},
+        authenticated: false,
+      },
+    ],
+  };
 }
