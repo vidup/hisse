@@ -53,6 +53,7 @@ export function registerProjectsRoutes(app: FastifyInstance) {
               authenticated: boolean;
             }>;
           }
+        | { kind: "automation"; name: string; description?: string }
       >;
     };
   }>("/api/projects/:projectId/workflow", async (request, reply) => {

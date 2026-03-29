@@ -1,7 +1,9 @@
+import { mkdir, writeFile, access } from "node:fs/promises";
 import path from "node:path";
 import type { FastifyRequest } from "fastify";
 import {
   AddTaskToProjectCommandHandler,
+  AdvanceTaskService,
   CompleteStepCommandHandler,
   CreateAgentCommandHandler,
   CreateProjectCommandHandler,
@@ -30,6 +32,7 @@ import {
   SetDefaultChatAgentCommandHandler,
   StartConversationCommandHandler,
   StartStepCommandHandler,
+  TsStepExecutor,
   UpdateProjectWorkflowCommandHandler,
   UpdateSkillCommandHandler,
 } from "@hisse/runtime";
@@ -54,6 +57,7 @@ export function resolveWorkspace(workspacePath: string) {
   const base = path.join(workspacePath, ".hisse");
   return {
     root: workspacePath,
+    base,
     skills: path.join(base, "skills"),
     agents: path.join(base, "agents"),
     projects: path.join(base, "projects"),
@@ -61,12 +65,62 @@ export function resolveWorkspace(workspacePath: string) {
     connectors: path.join(base, "connectors"),
     conversations: path.join(base, "conversations"),
     sessions: path.join(base, "sessions"),
+    types: path.join(base, "types"),
     settings: path.join(base, "workspace-settings.json"),
   };
 }
 
+const STEP_EXECUTION_CONTEXT_TYPES = `export interface StepInputQuestion {
+  id: string;
+  label: string;
+  type: "yes_no" | "single_select" | "multi_select" | "scale";
+  description?: string;
+  options?: Array<{ id: string; label: string }>;
+  range?: { min: number; max: number; step?: number; unit?: string };
+}
+
+export interface StepInputRequest {
+  title?: string;
+  instructions?: string;
+  questions: StepInputQuestion[];
+}
+
+export interface StepExecutionContext {
+  task: { id: string; name: string; description: string; projectId: string };
+  step: { id: string; name: string; description: string };
+  paths: {
+    workspace: string;
+    project: string;
+    tasks: string;
+  };
+  complete(): void;
+  fail(reason: string): void;
+  moveToPreviousStep(annotation: string): void;
+  waitForInput(request: StepInputRequest): void;
+  exec(command: string, options?: { cwd?: string }): Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  readFile(path: string): Promise<string>;
+  writeFile(path: string, content: string): Promise<void>;
+  fileExists(path: string): Promise<boolean>;
+  listFiles(dir: string): Promise<string[]>;
+  addFileToTask(filePath: string): Promise<void>;
+  addFileToProject(filePath: string): Promise<void>;
+}
+`;
+
+async function ensureWorkspaceTypes(typesDir: string): Promise<void> {
+  const filePath = path.join(typesDir, "step-execution-context.ts");
+  try {
+    await access(filePath);
+  } catch {
+    await mkdir(typesDir, { recursive: true });
+    await writeFile(filePath, STEP_EXECUTION_CONTEXT_TYPES, "utf-8");
+  }
+}
+
 export async function createHandlers(workspacePath: string) {
   const ws = resolveWorkspace(workspacePath);
+
+  await ensureWorkspaceTypes(ws.types);
 
   const skillsRepo = new FsSkillsRepository(ws.skills);
   const agentsRepo = new FsAgentsRepository(ws.agents);
@@ -92,6 +146,9 @@ export async function createHandlers(workspacePath: string) {
   };
   const agentRuntime = new PiAgentRuntime(loadCredentials, ws.root, ws.conversations, ws.skills);
 
+  const stepExecutor = new TsStepExecutor();
+  const advanceTaskService = new AdvanceTaskService(tasksRepo, projectsRepo, stepExecutor, ws.root);
+
   return {
     getSkills: new GetSkillsQueryHandler(skillsRepo),
     getSkillById: new GetSkillByIdQueryHandler(skillsRepo),
@@ -101,14 +158,14 @@ export async function createHandlers(workspacePath: string) {
     getAgentConfiguration: new GetAgentConfigurationQueryHandler(agentsRepo, skillsRepo),
     createAgent: new CreateAgentCommandHandler(agentsRepo),
     createProject: new CreateProjectCommandHandler(projectsRepo),
-    updateProjectWorkflow: new UpdateProjectWorkflowCommandHandler(projectsRepo, agentsRepo),
+    updateProjectWorkflow: new UpdateProjectWorkflowCommandHandler(projectsRepo, agentsRepo, ws.projects),
     getProjectsList: new GetProjectsListQueryHandler(projectsRepo),
     getProjectById: new GetProjectByIdQueryHandler(projectsRepo),
     getTasksByProject: new GetTasksByProjectQueryHandler(tasksRepo),
     addTaskToProject: new AddTaskToProjectCommandHandler(projectsRepo, tasksRepo),
-    startStep: new StartStepCommandHandler(tasksRepo, projectsRepo),
-    completeStep: new CompleteStepCommandHandler(tasksRepo),
-    moveTaskToStep: new MoveTaskToStepCommandHandler(tasksRepo, projectsRepo),
+    startStep: new StartStepCommandHandler(tasksRepo, projectsRepo, advanceTaskService),
+    completeStep: new CompleteStepCommandHandler(tasksRepo, advanceTaskService),
+    moveTaskToStep: new MoveTaskToStepCommandHandler(tasksRepo, projectsRepo, advanceTaskService),
     getTools: new GetToolsQueryHandler(toolsRepo),
     getConnectors: new GetConnectorsQueryHandler(connectorsRepo),
     getConnectorByProvider: new GetConnectorByProviderQueryHandler(connectorsRepo),

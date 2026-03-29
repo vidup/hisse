@@ -9,6 +9,10 @@ export type { AgentId } from "./domain/model/agent.js";
 export { Agent } from "./domain/model/agent.js";
 export type { SkillId } from "./domain/model/skill.js";
 export { Skill } from "./domain/model/skill.js";
+export { AutomationStep } from "./domain/model/steps.js";
+export type { StepExecutionState, StepExecutionStatus, StepInputRequest, StepInputResponse } from "./domain/model/task.js";
+export type { StepExecutionContext } from "./domain/model/step-execution-context.js";
+export type { StepExecutor, StepExecutionInput, StepExecutionResult, StepExecutionOutcome } from "./domain/ports/step-executor.port.js";
 export { WorkspaceChatSettings } from "./domain/model/workspace-chat-settings.js";
 export type {
   AssistantTurnEntry,
@@ -41,6 +45,7 @@ export { FsProjectsRepository } from "./infrastructure/fs-projects.repository.js
 export { FsTasksRepository } from "./infrastructure/fs-tasks.repository.js";
 export { FsToolsRepository } from "./infrastructure/fs-tools.repository.js";
 export { FsWorkspaceChatSettingsRepository } from "./infrastructure/fs-workspace-chat-settings.repository.js";
+export { TsStepExecutor } from "./infrastructure/ts-step-executor.js";
 
 // Application - Knowledge
 export {
@@ -81,6 +86,7 @@ export {
   AddTaskToProjectCommand,
   AddTaskToProjectCommandHandler,
 } from "./application/projects/add-task-to-project.command.js";
+export { AdvanceTaskService } from "./application/projects/advance-task.service.js";
 export { StartStepCommand, StartStepCommandHandler } from "./application/projects/start-step.command.js";
 export {
   CompleteStepCommand,
