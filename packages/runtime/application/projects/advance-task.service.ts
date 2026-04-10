@@ -1,14 +1,14 @@
 import path from "node:path";
 import { AutomationStep } from "../../domain/model/steps.js";
 import { TaskCurrentStep, type TaskId } from "../../domain/model/task.js";
-import type { ProjectsRepository } from "../../domain/ports/projects.repository.js";
+import type { ProjectsV2Repository } from "../../domain/ports/projects.repository.js";
 import type { StepExecutor } from "../../domain/ports/step-executor.port.js";
-import type { TasksRepository } from "../../domain/ports/tasks.repository.js";
+import type { TasksV2Repository } from "../../domain/ports/tasks.repository.js";
 
 export class AdvanceTaskService {
   constructor(
-    private readonly tasksRepository: TasksRepository,
-    private readonly projectsRepository: ProjectsRepository,
+    private readonly tasksRepository: TasksV2Repository,
+    private readonly projectsRepository: ProjectsV2Repository,
     private readonly stepExecutor: StepExecutor,
     private readonly workspacePath: string,
   ) {}
@@ -20,11 +20,11 @@ export class AdvanceTaskService {
     const project = await this.projectsRepository.findById(task.projectId);
     if (!project) throw new Error("Project not found");
 
-    const workflow = project.workflow;
-    const currentIndex = workflow.steps.findIndex((s) => s.id === task.currentStep?.id);
+    const projectSteps = project.steps;
+    const currentIndex = projectSteps.findIndex((s) => s.id === task.currentStep?.id);
     const nextIndex = currentIndex + 1;
 
-    if (nextIndex >= workflow.steps.length) {
+    if (nextIndex >= projectSteps.length) {
       task.complete();
       await this.tasksRepository.save(task);
       return;
@@ -57,7 +57,12 @@ export class AdvanceTaskService {
 
     const result = await this.stepExecutor.execute({
       codePath,
-      task: { id: task.id, name: task.name, description: task.description, projectId: task.projectId },
+      task: {
+        id: task.id,
+        name: task.name,
+        description: task.description,
+        projectId: task.projectId,
+      },
       step: { id: step.id, name: step.name, description: step.description },
       paths: {
         workspace: this.workspacePath,
@@ -111,7 +116,10 @@ export class AdvanceTaskService {
     const project = await this.projectsRepository.findById(projectId);
     if (!project) throw new Error("Project not found");
 
-    const slug = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const slug = project.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
     return path.join(this.workspacePath, ".hisse", "projects", slug);
   }
 }
